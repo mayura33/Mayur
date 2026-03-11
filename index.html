@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farm Fresh | License Portal</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        :root {
+            --primary: #2d6a4f; /* Forest Green */
+            --secondary: #74c69d; /* Sage Green */
+            --accent: #ffb703; /* Harvest Gold */
+            --bg: #f0f4f1;
+            --card: #ffffff;
+            --text: #1b4332;
+        }
+
+        body { 
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
+            background: linear-gradient(135deg, #d8f3dc 0%, #b7e4c7 100%);
+            display: flex; justify-content: center; align-items: center; 
+            min-height: 100vh; margin: 0; color: var(--text);
+        }
+
+        .card { 
+            background: var(--card); padding: 2.5rem; border-radius: 20px; 
+            box-shadow: 0 15px 35px -5px rgba(27, 67, 50, 0.2); 
+            width: 100%; max-width: 400px; position: relative;
+        }
+
+        .logo-area { text-align: center; margin-bottom: 1.5rem; }
+        .logo-icon { font-size: 3rem; margin-bottom: 0.5rem; }
+        h2 { margin: 0; color: var(--primary); font-weight: 800; letter-spacing: -0.5px; }
+        p.subtitle { color: #52796f; margin-top: 5px; font-size: 0.9rem; margin-bottom: 1.5rem; }
+
+        /* Login and Generator Sections */
+        #login-section, #generator-section { display: none; }
+
+        label { display: block; margin-top: 1.2rem; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; color: #40916c; }
+        
+        input { 
+            width: 100%; padding: 12px 16px; margin-top: 6px; 
+            border: 2px solid #d8f3dc; border-radius: 12px; box-sizing: border-box; 
+            font-size: 1rem; transition: all 0.2s; outline: none;
+        }
+
+        input:focus { border-color: var(--primary); background: #f7fff9; }
+        input[readonly] { background-color: #f1f5f9; cursor: not-allowed; border-color: #e2e8f0; }
+
+        button {
+            width: 100%; margin-top: 1.5rem; padding: 14px;
+            background: var(--primary); color: white; border: none;
+            border-radius: 12px; font-weight: bold; cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover { background: #1b4332; }
+
+        /* Generator Specifics */
+        .result-container { 
+            margin-top: 2rem; padding: 1.5rem; background: #f7fff9; 
+            border-radius: 15px; border: 2px dashed var(--secondary); 
+            cursor: pointer; transition: all 0.2s; text-align: center;
+        }
+
+        .result-container:hover { border-color: var(--primary); background: #effdf3; }
+        #licenseKey { font-family: 'Courier New', monospace; font-weight: bold; font-size: 1.1rem; word-break: break-all; }
+        .copy-hint { display: block; font-size: 0.75rem; color: var(--secondary); margin-top: 10px; font-weight: bold; }
+
+        #toast {
+            visibility: hidden; min-width: 200px; background-color: var(--primary); color: #fff;
+            text-align: center; border-radius: 50px; padding: 12px;
+            position: fixed; z-index: 10; bottom: 30px; left: 50%; transform: translateX(-50%);
+        }
+
+        #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="logo-area">
+        <div class="logo-icon">🌿</div>
+        <h2>FARM FRESH</h2>
+        <p class="subtitle" id="status-text">Internal License Portal</p>
+    </div>
+
+    <div id="login-section">
+        <label>Username</label>
+        <input type="text" id="username" placeholder="Enter username">
+        
+        <label>Password</label>
+        <input type="password" id="password" placeholder="••••••••">
+        
+        <button onclick="checkLogin()">Access Portal</button>
+    </div>
+
+    <div id="generator-section">
+        <label>Device Serial Key</label>
+        <input type="text" id="serial" placeholder="Paste Serial Here..." autocomplete="off">
+        
+        <label>Auto-Expiration (50 Years)</label>
+        <input type="text" id="expDate" readonly>
+
+        <div id="result-area" style="display: none;">
+            <div class="result-container" onclick="copyToClipboard()">
+                <div id="licenseKey"></div>
+                <span class="copy-hint">TAP TO COPY LICENSE</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="toast">Copied to Clipboard!</div>
+
+<script>
+    const AUTH_PASS = "FarmFresh";
+    const AES_KEY_STR = "GOLDFIELDTECHNOLOGY$2019";
+    const AES_IV_STR = "encryptionIntVec";
+
+    window.onload = function() {
+        // Check if already logged in this session
+        if (sessionStorage.getItem("isLoggedIn") === "true") {
+            showGenerator();
+        } else {
+            document.getElementById('login-section').style.display = 'block';
+        }
+    };
+
+    function checkLogin() {
+        const pass = document.getElementById('password').value;
+        if (pass === AUTH_PASS) {
+            sessionStorage.setItem("isLoggedIn", "true");
+            showGenerator();
+        } else {
+            alert("Incorrect Password. Please try again.");
+        }
+    }
+
+    function showGenerator() {
+        document.getElementById('login-section').style.display = 'none';
+        document.getElementById('generator-section').style.display = 'block';
+        document.getElementById('status-text').innerText = "License Generator Ready";
+        
+        // Setup Date
+        const date = new Date();
+        date.setFullYear(date.getFullYear() + 50);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        document.getElementById('expDate').value = `${day}/${month}/${date.getFullYear()}`;
+    }
+
+    // Auto-generate logic
+    document.getElementById('serial').addEventListener('input', function() {
+        let serial = this.value.trim().toUpperCase();
+        const expDate = document.getElementById('expDate').value;
+        const resultArea = document.getElementById('result-area');
+
+        if (serial.length < 1) {
+            resultArea.style.display = 'none';
+            return;
+        }
+
+        let formattedSerial = serial.length > 16 ? serial.substring(0, 16) : serial.padEnd(16, '0');
+        const b1 = formattedSerial.substring(0, 4);
+        const b2 = formattedSerial.substring(4, 8);
+        const b3 = formattedSerial.substring(8, 12);
+        const b4 = formattedSerial.substring(12, 16);
+        const swipeKey = b3 + b4 + b1 + b2;
+
+        const rawString = `${swipeKey}#POS Biller#${expDate}`;
+        const key = CryptoJS.enc.Utf8.parse(AES_KEY_STR);
+        const iv = CryptoJS.enc.Utf8.parse(AES_IV_STR);
+
+        const encrypted = CryptoJS.AES.encrypt(rawString, key, {
+            iv: iv,
+            mode: CryptoJS.mode.CBC,
+            padding: CryptoJS.pad.Pkcs7
+        });
+
+        document.getElementById('licenseKey').innerText = encrypted.toString().replace(/=+$/, "");
+        resultArea.style.display = 'block';
+    });
+
+    function copyToClipboard() {
+        const keyText = document.getElementById('licenseKey').innerText;
+        navigator.clipboard.writeText(keyText).then(() => {
+            const toast = document.getElementById("toast");
+            toast.className = "show";
+            setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+        });
+    }
+</script>
+
+</body>
+</html>
