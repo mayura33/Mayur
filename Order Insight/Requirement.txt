@@ -1,0 +1,23 @@
+I want to make this application as Offline so do purely HTML and JAVASCRIPT Code or Angular code or Vue whichever you find is easy. Provide more functionality if you think can add an advantages give smooth and best UI.
+
+User will upload zip file or excel file, you are suppose to accept those excel files.
+
+Task 1) I've give you an excel sheet. Read column Reference No. and do sorting based on first character number as those are used to distinct my diffrent website orders lets call it as SitePrefix.
+So it should be use group my website orders.
+This way user will have each of their prefix/website wise data.
+
+Task 2) 
+So show here new table which show each SitePrefix wise data which show as below.
+Read there is a another columne named "Current Status" from excel I want show count.
+
+Site prefix column show count of records with each sites. (This is clickable row on click I want to do number 3 task)
+Show order with DELIVERED status in new columne
+Show order with RETURNING_TO_ORIGIN + RETURNING_TO_ORIGIN status in new columne
+Show order with CANCELLED status in new columne
+Show order with SHIPPED status in new columne
+Show Ratio which should show as -> (DELIVERED + RETURNING_TO_ORIGIN) = C, (A * 100)/C = RATIO NUMBER
+
+Task 3) On above table row click. I want to show insight of this website in more depth.
+Now read column "Product Description" from excel from above clicked site prefix and do group by.
+
+Full excel sheet scan is needed on only task 1, Rest task 2 is derived from task 1 result same way task 3 is derived from task 2.

@@ -1,0 +1,1028 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Order Insights</title>
+  <style>
+    :root {
+      --bg: #f6f7f2;
+      --ink: #18201c;
+      --muted: #667168;
+      --line: #dfe4dc;
+      --panel: #ffffff;
+      --panel-soft: #fbfcfa;
+      --panel-softer: #fcfdfb;
+      --header-bg: #102620;
+      --header-ink: #f8fbf6;
+      --header-muted: #b9c9c0;
+      --field-bg: #ffffff;
+      --table-head: #eef3ef;
+      --table-head-ink: #3f4b44;
+      --row-hover: #f4faf7;
+      --row-active: #e6f4ef;
+      --badge-bg: #e7efeb;
+      --badge-ink: #173b32;
+      --meter-bg: #e5e9e6;
+      --button-secondary-bg: #f9fbf8;
+      --button-secondary-ink: #19352d;
+      --button-secondary-hover: #eaf1ed;
+      --brand: #1c7c6e;
+      --brand-dark: #11584e;
+      --amber: #b46b09;
+      --red: #b83232;
+      --blue: #3569a8;
+      --shadow: 0 16px 45px rgba(27, 36, 31, .10);
+    }
+
+    body.dark {
+      --bg: #111815;
+      --ink: #edf4ef;
+      --muted: #a6b5ac;
+      --line: #2d3a33;
+      --panel: #18211d;
+      --panel-soft: #151d19;
+      --panel-softer: #19231e;
+      --header-bg: #07110e;
+      --header-ink: #f5fbf7;
+      --header-muted: #9db5a9;
+      --field-bg: #101815;
+      --table-head: #202d27;
+      --table-head-ink: #c8d7ce;
+      --row-hover: #1e3029;
+      --row-active: #204339;
+      --badge-bg: #234239;
+      --badge-ink: #d7f3ea;
+      --meter-bg: #34423b;
+      --button-secondary-bg: #17211d;
+      --button-secondary-ink: #e8f2ec;
+      --button-secondary-hover: #22322b;
+      --brand: #2ba88f;
+      --brand-dark: #23816f;
+      --amber: #e0a34a;
+      --red: #ef7474;
+      --blue: #7eb2f0;
+      --shadow: 0 18px 45px rgba(0, 0, 0, .28);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.45;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    header {
+      background: var(--header-bg);
+      color: var(--header-ink);
+      border-bottom: 1px solid rgba(255,255,255,.12);
+    }
+
+    .bar {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 22px 22px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 25px;
+      font-weight: 780;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin-top: 3px;
+      color: var(--header-muted);
+      font-size: 14px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    button, .file-label {
+      appearance: none;
+      border: 1px solid transparent;
+      background: var(--brand);
+      color: white;
+      font: inherit;
+      font-weight: 700;
+      min-height: 39px;
+      padding: 9px 13px;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: transform .15s ease, background .15s ease, border-color .15s ease;
+      white-space: nowrap;
+    }
+
+    button:hover, .file-label:hover { background: var(--brand-dark); transform: translateY(-1px); }
+    button.secondary { background: var(--button-secondary-bg); color: var(--button-secondary-ink); border-color: var(--line); }
+    button.secondary:hover { background: var(--button-secondary-hover); }
+    button:disabled { opacity: .48; cursor: not-allowed; transform: none; }
+    input[type="file"] { display: none; }
+
+    .theme-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      min-height: 39px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 5px 10px 5px 6px;
+      background: var(--button-secondary-bg);
+      color: var(--button-secondary-ink);
+      font: inherit;
+      font-weight: 760;
+      cursor: pointer;
+      transition: transform .15s ease, background .15s ease, border-color .15s ease;
+      white-space: nowrap;
+    }
+
+    .theme-toggle:hover {
+      background: var(--button-secondary-hover);
+      transform: translateY(-1px);
+    }
+
+    .theme-toggle .switch {
+      width: 44px;
+      height: 26px;
+      border-radius: 999px;
+      background: #cfd9d2;
+      position: relative;
+      flex: 0 0 auto;
+      transition: background .18s ease;
+    }
+
+    .theme-toggle .switch::after {
+      content: "";
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      top: 3px;
+      left: 3px;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 0 2px 7px rgba(0, 0, 0, .24);
+      transition: transform .18s ease;
+    }
+
+    .theme-toggle[aria-pressed="true"] .switch {
+      background: var(--brand);
+    }
+
+    .theme-toggle[aria-pressed="true"] .switch::after {
+      transform: translateX(18px);
+    }
+
+    .theme-toggle .theme-text {
+      min-width: 82px;
+      text-align: left;
+    }
+
+    main {
+      width: min(1280px, 100%);
+      margin: 0 auto;
+      padding: 22px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 340px minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel-header {
+      padding: 16px 17px 12px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 16px;
+      letter-spacing: 0;
+    }
+
+    .upload {
+      padding: 18px;
+    }
+
+    .drop {
+      border: 1.5px dashed #aab8af;
+      background: var(--panel-soft);
+      border-radius: 8px;
+      padding: 20px;
+      min-height: 170px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      gap: 12px;
+    }
+
+    .drop.dragover {
+      border-color: var(--brand);
+      background: var(--row-hover);
+    }
+
+    .drop strong { font-size: 17px; }
+    .drop p, .hint { margin: 0; color: var(--muted); font-size: 13px; }
+    .hint { margin-top: 11px; }
+
+    .stats {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: var(--panel-softer);
+    }
+
+    .stat .label { color: var(--muted); font-size: 12px; }
+    .stat .value { font-size: 24px; font-weight: 780; margin-top: 2px; }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      padding: 13px 17px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel-soft);
+    }
+
+    .search {
+      min-width: 230px;
+      flex: 1;
+      position: relative;
+    }
+
+    input[type="search"] {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 9px 11px;
+      font: inherit;
+      background: var(--field-bg);
+      color: var(--ink);
+    }
+
+    .select {
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--field-bg);
+      color: var(--ink);
+      padding: 8px 10px;
+      font: inherit;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      max-height: calc(100vh - 205px);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 820px;
+    }
+
+    th, td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+      font-size: 13px;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--table-head);
+      color: var(--table-head-ink);
+      font-size: 12px;
+      text-transform: uppercase;
+      font-weight: 800;
+      letter-spacing: 0;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    tr.clickable { cursor: pointer; }
+    tr.clickable:hover td { background: var(--row-hover); }
+    tr.active td { background: var(--row-active); }
+    td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 34px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-weight: 800;
+      background: var(--badge-bg);
+      color: var(--badge-ink);
+    }
+
+    .ratio {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: flex-end;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .meter {
+      width: 72px;
+      height: 8px;
+      background: var(--meter-bg);
+      border-radius: 20px;
+      overflow: hidden;
+      flex: 0 0 auto;
+    }
+
+    .meter span {
+      display: block;
+      height: 100%;
+      background: var(--brand);
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 18px;
+    }
+
+    .detail-empty {
+      padding: 28px 18px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .status-ok { color: var(--brand-dark); font-weight: 800; }
+    .status-rto { color: var(--amber); font-weight: 800; }
+    .status-bad { color: var(--red); font-weight: 800; }
+    .status-ship { color: var(--blue); font-weight: 800; }
+    .error { color: var(--red); margin-top: 10px; font-size: 13px; }
+
+    @media (max-width: 920px) {
+      .bar { align-items: flex-start; flex-direction: column; }
+      .header-actions { justify-content: flex-start; }
+      .grid { grid-template-columns: 1fr; }
+      .table-wrap { max-height: none; }
+      main { padding: 14px; }
+      table { min-width: 760px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="bar">
+        <div>
+          <h1>Order Insights</h1>
+          <div class="subtitle">Offline Excel, CSV, and ZIP analyzer for website-wise order performance</div>
+        </div>
+        <div class="header-actions">
+          <label class="file-label" for="fileInput">Upload file</label>
+          <button class="theme-toggle" id="themeButton" type="button" aria-pressed="false">
+            <span class="switch" aria-hidden="true"></span>
+            <span class="theme-text">Dark theme</span>
+          </button>
+          <button class="secondary" id="resetButton" type="button" disabled>Reset</button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <input id="fileInput" type="file" multiple accept=".csv,.xlsx,.xls,.zip,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/zip">
+      <div class="grid">
+        <aside class="panel">
+          <div class="panel-header">
+            <h2>Data Source</h2>
+          </div>
+          <div class="upload">
+            <div class="drop" id="dropZone">
+              <strong>Drop files here</strong>
+              <p>Use exported CSV, XLSX, or a ZIP that contains them.</p>
+              <label class="file-label" for="fileInput">Choose files</label>
+            </div>
+            <p class="hint">Grouping uses the full leading prefix from <strong>Reference No.</strong>. Counts use <strong>Current Status</strong>. Drill-down uses <strong>Product Description</strong>.</p>
+            <div class="error" id="errorBox" hidden></div>
+            <div class="stats">
+              <div class="stat">
+                <div class="label">Rows loaded</div>
+                <div class="value" id="rowCount">0</div>
+              </div>
+              <div class="stat">
+                <div class="label">Site prefixes</div>
+                <div class="value" id="prefixCount">0</div>
+              </div>
+              <div class="stat">
+                <div class="label">Selected prefix</div>
+                <div class="value" id="selectedPrefix">None</div>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <section class="split">
+          <section class="panel">
+            <div class="panel-header">
+              <h2>Site Prefix Summary</h2>
+              <span class="hint" id="sourceName">No file loaded</span>
+            </div>
+            <div class="controls">
+              <div class="search"><input id="prefixSearch" type="search" placeholder="Search prefix or status"></div>
+              <select class="select" id="statusFilter">
+                <option value="">All statuses</option>
+                <option value="DELIVERED">Has delivered</option>
+                <option value="RTO">Has RTO</option>
+                <option value="CANCELLED">Has cancelled</option>
+                <option value="SHIPPED">Has shipped / out for delivery</option>
+              </select>
+              <button class="secondary" id="exportSummary" type="button" disabled>Export summary CSV</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th data-sort="prefix">Site Prefix</th>
+                    <th class="num" data-sort="total">Total</th>
+                    <th class="num" data-sort="delivered">Delivered</th>
+                    <th class="num" data-sort="rto">RTO</th>
+                    <th class="num" data-sort="cancelled">Cancelled</th>
+                    <th class="num" data-sort="shipped">Shipped + OFD</th>
+                    <th class="num" data-sort="other">Other</th>
+                    <th class="num" data-sort="ratio">Delivery Ratio</th>
+                  </tr>
+                </thead>
+                <tbody id="summaryBody">
+                  <tr><td colspan="8" class="detail-empty">Upload a file to begin.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <h2>Product Insight</h2>
+              <span class="hint" id="detailTitle">Click a prefix row</span>
+            </div>
+            <div class="controls">
+              <div class="search"><input id="productSearch" type="search" placeholder="Search product description"></div>
+              <button class="secondary" id="exportDetail" type="button" disabled>Export product CSV</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th data-detail-sort="product">Product Description</th>
+                    <th class="num" data-detail-sort="total">Total</th>
+                    <th class="num" data-detail-sort="delivered">Delivered</th>
+                    <th class="num" data-detail-sort="rto">RTO</th>
+                    <th class="num" data-detail-sort="cancelled">Cancelled</th>
+                    <th class="num" data-detail-sort="shipped">Shipped + OFD</th>
+                    <th class="num" data-detail-sort="ratio">Delivery Ratio</th>
+                  </tr>
+                </thead>
+                <tbody id="detailBody">
+                  <tr><td colspan="7" class="detail-empty">No prefix selected.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const state = {
+      rows: [],
+      sourceNames: [],
+      groups: [],
+      selectedPrefix: null,
+      summarySort: { key: "prefix", dir: 1 },
+      detailSort: { key: "total", dir: -1 }
+    };
+
+    const els = {
+      fileInput: document.getElementById("fileInput"),
+      dropZone: document.getElementById("dropZone"),
+      errorBox: document.getElementById("errorBox"),
+      rowCount: document.getElementById("rowCount"),
+      prefixCount: document.getElementById("prefixCount"),
+      selectedPrefix: document.getElementById("selectedPrefix"),
+      sourceName: document.getElementById("sourceName"),
+      summaryBody: document.getElementById("summaryBody"),
+      detailBody: document.getElementById("detailBody"),
+      detailTitle: document.getElementById("detailTitle"),
+      prefixSearch: document.getElementById("prefixSearch"),
+      productSearch: document.getElementById("productSearch"),
+      statusFilter: document.getElementById("statusFilter"),
+      resetButton: document.getElementById("resetButton"),
+      themeButton: document.getElementById("themeButton"),
+      exportSummary: document.getElementById("exportSummary"),
+      exportDetail: document.getElementById("exportDetail")
+    };
+
+    applyTheme(localStorage.getItem("orderPrefixTheme") || "light");
+    els.fileInput.addEventListener("change", event => handleFiles([...event.target.files]));
+    els.resetButton.addEventListener("click", resetApp);
+    els.themeButton.addEventListener("click", toggleTheme);
+    els.prefixSearch.addEventListener("input", renderSummary);
+    els.productSearch.addEventListener("input", renderDetails);
+    els.statusFilter.addEventListener("change", renderSummary);
+    els.exportSummary.addEventListener("click", () => downloadCsv("site-prefix-summary.csv", summaryExportRows()));
+    els.exportDetail.addEventListener("click", () => downloadCsv("product-insight.csv", detailExportRows()));
+
+    document.querySelectorAll("[data-sort]").forEach(th => {
+      th.addEventListener("click", () => {
+        const key = th.dataset.sort;
+        state.summarySort.dir = state.summarySort.key === key ? state.summarySort.dir * -1 : 1;
+        state.summarySort.key = key;
+        renderSummary();
+      });
+    });
+
+    document.querySelectorAll("[data-detail-sort]").forEach(th => {
+      th.addEventListener("click", () => {
+        const key = th.dataset.detailSort;
+        state.detailSort.dir = state.detailSort.key === key ? state.detailSort.dir * -1 : -1;
+        state.detailSort.key = key;
+        renderDetails();
+      });
+    });
+
+    ["dragenter", "dragover"].forEach(name => {
+      els.dropZone.addEventListener(name, event => {
+        event.preventDefault();
+        els.dropZone.classList.add("dragover");
+      });
+    });
+
+    ["dragleave", "drop"].forEach(name => {
+      els.dropZone.addEventListener(name, event => {
+        event.preventDefault();
+        els.dropZone.classList.remove("dragover");
+      });
+    });
+
+    els.dropZone.addEventListener("drop", event => handleFiles([...event.dataTransfer.files]));
+
+    function toggleTheme() {
+      const nextTheme = document.body.classList.contains("dark") ? "light" : "dark";
+      applyTheme(nextTheme);
+      localStorage.setItem("orderPrefixTheme", nextTheme);
+    }
+
+    function applyTheme(theme) {
+      const isDark = theme === "dark";
+      document.body.classList.toggle("dark", isDark);
+      els.themeButton.querySelector(".theme-text").textContent = isDark ? "Light theme" : "Dark theme";
+      els.themeButton.setAttribute("aria-pressed", String(isDark));
+    }
+
+    async function handleFiles(files) {
+      clearError();
+      if (!files.length) return;
+      try {
+        const parsed = [];
+        const sourceNames = [];
+        for (const file of files) {
+          const rows = await parseUploadedFile(file);
+          parsed.push(...rows);
+          sourceNames.push(file.name);
+        }
+        if (!parsed.length) throw new Error("No rows were found in the selected file.");
+        state.rows = parsed;
+        state.sourceNames = sourceNames;
+        state.selectedPrefix = null;
+        state.groups = buildPrefixGroups(parsed);
+        renderAll();
+      } catch (error) {
+        showError(error.message || String(error));
+      }
+    }
+
+    async function parseUploadedFile(file) {
+      const name = file.name.toLowerCase();
+      if (name.endsWith(".zip")) {
+        const entries = await readZipEntries(await file.arrayBuffer());
+        const rows = [];
+        for (const entry of entries) {
+          const entryName = entry.name.toLowerCase();
+          if (entryName.endsWith(".csv")) rows.push(...parseCsv(new TextDecoder().decode(entry.bytes)));
+          if (entryName.endsWith(".xlsx")) rows.push(...await parseXlsx(entry.bytes.buffer));
+        }
+        if (!rows.length) throw new Error("The ZIP did not contain a CSV or XLSX file.");
+        return rows;
+      }
+      if (name.endsWith(".csv") || file.type === "text/csv") return parseCsv(await file.text());
+      if (name.endsWith(".xlsx")) return parseXlsx(await file.arrayBuffer());
+      if (name.endsWith(".xls")) throw new Error("Legacy .xls files are not supported offline. Please save the Excel file as .xlsx or CSV.");
+      throw new Error("Unsupported file type. Please upload CSV, XLSX, or ZIP.");
+    }
+
+    function buildPrefixGroups(rows) {
+      const refKey = findColumn(rows, "Reference No.");
+      const statusKey = findColumn(rows, "Current Status");
+      const productKey = findColumn(rows, "Product Description");
+      if (!refKey) throw new Error("Missing required column: Reference No.");
+      if (!statusKey) throw new Error("Missing required column: Current Status");
+      if (!productKey) throw new Error("Missing required column: Product Description");
+
+      const map = new Map();
+      rows.forEach(row => {
+        const ref = clean(row[refKey]);
+        const prefix = extractSitePrefix(ref);
+        const status = normalizeStatus(row[statusKey]);
+        const product = clean(row[productKey]) || "Blank product description";
+        if (!map.has(prefix)) map.set(prefix, newCounter(prefix));
+        const group = map.get(prefix);
+        addStatus(group, status);
+        group.rows.push({ row, status, product });
+      });
+
+      return [...map.values()].map(finalizeCounter).sort((a, b) => naturalCompare(a.prefix, b.prefix));
+    }
+
+    function extractSitePrefix(referenceNo) {
+      const ref = clean(referenceNo);
+      if (!ref) return "Unknown";
+      const match = ref.match(/^[^\d]+/);
+      return (match ? match[0] : ref.charAt(0)).trim().toUpperCase() || "Unknown";
+    }
+
+    function productGroups(prefix) {
+      const group = state.groups.find(item => item.prefix === prefix);
+      if (!group) return [];
+      const map = new Map();
+      group.rows.forEach(item => {
+        if (!map.has(item.product)) map.set(item.product, newCounter(item.product));
+        addStatus(map.get(item.product), item.status);
+      });
+      return [...map.values()].map(finalizeCounter);
+    }
+
+    function newCounter(prefix) {
+      return { prefix, total: 0, delivered: 0, returning: 0, returned: 0, cancelled: 0, shipped: 0, other: 0, rows: [] };
+    }
+
+    function addStatus(target, status) {
+      target.total += 1;
+      if (status === "DELIVERED") target.delivered += 1;
+      else if (status === "RETURNING_TO_ORIGIN") target.returning += 1;
+      else if (status === "RETURNED_TO_ORIGIN") target.returned += 1;
+      else if (status === "CANCELLED" || status === "CANCELED") target.cancelled += 1;
+      else if (isShippedBucket(status)) target.shipped += 1;
+      else target.other += 1;
+    }
+
+    function isShippedBucket(status) {
+      return status === "SHIPPED" || status === "OUT_FOR_DELIVERY";
+    }
+
+    function finalizeCounter(item) {
+      item.rto = item.returning + item.returned;
+      item.ratio = item.delivered + item.rto ? item.delivered * 100 / (item.delivered + item.rto) : 0;
+      return item;
+    }
+
+    function renderAll() {
+      els.rowCount.textContent = state.rows.length.toLocaleString();
+      els.prefixCount.textContent = state.groups.length.toLocaleString();
+      els.selectedPrefix.textContent = state.selectedPrefix || "None";
+      els.sourceName.textContent = state.sourceNames.join(", ");
+      els.resetButton.disabled = false;
+      els.exportSummary.disabled = false;
+      renderSummary();
+      renderDetails();
+    }
+
+    function renderSummary() {
+      if (!state.groups.length) return;
+      const query = els.prefixSearch.value.trim().toLowerCase();
+      const filter = els.statusFilter.value;
+      let rows = state.groups.filter(row => {
+        if (query && !row.prefix.toLowerCase().includes(query)) return false;
+        if (filter === "DELIVERED" && !row.delivered) return false;
+        if (filter === "RTO" && !row.rto) return false;
+        if (filter === "CANCELLED" && !row.cancelled) return false;
+        if (filter === "SHIPPED" && !row.shipped) return false;
+        return true;
+      });
+      rows = sortRows(rows, state.summarySort);
+      els.summaryBody.innerHTML = rows.map(row => `
+        <tr class="clickable ${row.prefix === state.selectedPrefix ? "active" : ""}" data-prefix="${escapeAttr(row.prefix)}">
+          <td><span class="badge">${escapeHtml(row.prefix)}</span></td>
+          <td class="num">${formatNumber(row.total)}</td>
+          <td class="num status-ok">${formatNumber(row.delivered)}</td>
+          <td class="num status-rto">${formatNumber(row.rto)}</td>
+          <td class="num status-bad">${formatNumber(row.cancelled)}</td>
+          <td class="num status-ship">${formatNumber(row.shipped)}</td>
+          <td class="num">${formatNumber(row.other)}</td>
+          <td class="num">${ratioMarkup(row.ratio)}</td>
+        </tr>
+      `).join("") || `<tr><td colspan="8" class="detail-empty">No prefixes match the current filters.</td></tr>`;
+
+      els.summaryBody.querySelectorAll("tr[data-prefix]").forEach(row => {
+        row.addEventListener("click", () => {
+          state.selectedPrefix = row.dataset.prefix;
+          els.selectedPrefix.textContent = state.selectedPrefix;
+          renderSummary();
+          renderDetails();
+        });
+      });
+    }
+
+    function renderDetails() {
+      if (!state.selectedPrefix) {
+        els.detailTitle.textContent = "Click a prefix row";
+        els.detailBody.innerHTML = `<tr><td colspan="7" class="detail-empty">No prefix selected.</td></tr>`;
+        els.exportDetail.disabled = true;
+        return;
+      }
+      const query = els.productSearch.value.trim().toLowerCase();
+      let rows = productGroups(state.selectedPrefix).filter(row => !query || row.prefix.toLowerCase().includes(query));
+      rows = sortRows(rows, state.detailSort);
+      els.detailTitle.textContent = `Prefix ${state.selectedPrefix}: ${formatNumber(rows.reduce((sum, row) => sum + row.total, 0))} matching orders`;
+      els.exportDetail.disabled = !rows.length;
+      els.detailBody.innerHTML = rows.map(row => `
+        <tr>
+          <td>${escapeHtml(row.prefix)}</td>
+          <td class="num">${formatNumber(row.total)}</td>
+          <td class="num status-ok">${formatNumber(row.delivered)}</td>
+          <td class="num status-rto">${formatNumber(row.rto)}</td>
+          <td class="num status-bad">${formatNumber(row.cancelled)}</td>
+          <td class="num status-ship">${formatNumber(row.shipped)}</td>
+          <td class="num">${ratioMarkup(row.ratio)}</td>
+        </tr>
+      `).join("") || `<tr><td colspan="7" class="detail-empty">No products match the search.</td></tr>`;
+    }
+
+    function parseCsv(text) {
+      const rows = [];
+      let row = [], cell = "", quoted = false;
+      for (let i = 0; i < text.length; i += 1) {
+        const char = text[i];
+        const next = text[i + 1];
+        if (char === '"' && quoted && next === '"') {
+          cell += '"';
+          i += 1;
+        } else if (char === '"') {
+          quoted = !quoted;
+        } else if (char === "," && !quoted) {
+          row.push(cell);
+          cell = "";
+        } else if ((char === "\n" || char === "\r") && !quoted) {
+          if (char === "\r" && next === "\n") i += 1;
+          row.push(cell);
+          if (row.some(value => value !== "")) rows.push(row);
+          row = [];
+          cell = "";
+        } else {
+          cell += char;
+        }
+      }
+      row.push(cell);
+      if (row.some(value => value !== "")) rows.push(row);
+      if (rows.length < 2) return [];
+      const headers = rows[0].map(clean);
+      return rows.slice(1).map(values => {
+        const record = {};
+        headers.forEach((header, index) => record[header] = values[index] ?? "");
+        return record;
+      });
+    }
+
+    async function parseXlsx(buffer) {
+      const entries = await readZipEntries(buffer);
+      const files = new Map(entries.map(entry => [entry.name.replace(/^\/+/, ""), entry.bytes]));
+      const text = name => new TextDecoder().decode(files.get(name));
+      if (!files.has("xl/workbook.xml")) throw new Error("XLSX workbook metadata was not found.");
+      const parser = new DOMParser();
+      const workbook = parser.parseFromString(text("xl/workbook.xml"), "application/xml");
+      const rels = parser.parseFromString(text("xl/_rels/workbook.xml.rels"), "application/xml");
+      const sheet = workbook.querySelector("sheet");
+      if (!sheet) throw new Error("No worksheet was found in the XLSX file.");
+      const relId = sheet.getAttribute("r:id");
+      const rel = [...rels.querySelectorAll("Relationship")].find(item => item.getAttribute("Id") === relId);
+      const target = rel ? rel.getAttribute("Target").replace(/^\/?xl\//, "") : "worksheets/sheet1.xml";
+      const sheetPath = "xl/" + target;
+      const shared = files.has("xl/sharedStrings.xml") ? sharedStrings(parser.parseFromString(text("xl/sharedStrings.xml"), "application/xml")) : [];
+      const xml = parser.parseFromString(text(sheetPath), "application/xml");
+      const table = [...xml.querySelectorAll("sheetData row")].map(row => {
+        const values = [];
+        row.querySelectorAll("c").forEach(cell => {
+          const ref = cell.getAttribute("r") || "";
+          const col = columnIndex(ref.replace(/\d+/g, "")) || values.length;
+          values[col] = cellValue(cell, shared);
+        });
+        return values;
+      }).filter(row => row.some(value => clean(value)));
+      if (table.length < 2) return [];
+      const headers = table[0].map(clean);
+      return table.slice(1).map(values => {
+        const record = {};
+        headers.forEach((header, index) => record[header] = values[index] ?? "");
+        return record;
+      });
+    }
+
+    function sharedStrings(xml) {
+      return [...xml.querySelectorAll("si")].map(si => [...si.querySelectorAll("t")].map(t => t.textContent).join(""));
+    }
+
+    function cellValue(cell, shared) {
+      const type = cell.getAttribute("t");
+      if (type === "s") return shared[Number(cell.querySelector("v")?.textContent || 0)] || "";
+      if (type === "inlineStr") return cell.querySelector("is t")?.textContent || "";
+      return cell.querySelector("v")?.textContent || "";
+    }
+
+    function columnIndex(letters) {
+      return [...letters.toUpperCase()].reduce((sum, char) => sum * 26 + char.charCodeAt(0) - 64, 0) - 1;
+    }
+
+    async function readZipEntries(buffer) {
+      const view = new DataView(buffer);
+      const bytes = new Uint8Array(buffer);
+      let eocd = -1;
+      for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 66000); i -= 1) {
+        if (view.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+      }
+      if (eocd < 0) throw new Error("Invalid ZIP file.");
+      const count = view.getUint16(eocd + 10, true);
+      let offset = view.getUint32(eocd + 16, true);
+      const entries = [];
+      for (let i = 0; i < count; i += 1) {
+        if (view.getUint32(offset, true) !== 0x02014b50) throw new Error("Invalid ZIP directory.");
+        const method = view.getUint16(offset + 10, true);
+        const compressedSize = view.getUint32(offset + 20, true);
+        const nameLength = view.getUint16(offset + 28, true);
+        const extraLength = view.getUint16(offset + 30, true);
+        const commentLength = view.getUint16(offset + 32, true);
+        const localOffset = view.getUint32(offset + 42, true);
+        const name = decodeBytes(bytes.slice(offset + 46, offset + 46 + nameLength));
+        offset += 46 + nameLength + extraLength + commentLength;
+        if (name.endsWith("/")) continue;
+        const localNameLength = view.getUint16(localOffset + 26, true);
+        const localExtraLength = view.getUint16(localOffset + 28, true);
+        const dataStart = localOffset + 30 + localNameLength + localExtraLength;
+        const compressed = bytes.slice(dataStart, dataStart + compressedSize);
+        entries.push({ name, bytes: await inflateZipData(compressed, method) });
+      }
+      return entries;
+    }
+
+    async function inflateZipData(bytes, method) {
+      if (method === 0) return bytes;
+      if (method !== 8) throw new Error("Unsupported ZIP compression method: " + method);
+      if (!("DecompressionStream" in window)) throw new Error("This browser cannot decompress ZIP files offline. Try opening the app in Chrome or Edge.");
+      const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+      return new Uint8Array(await new Response(stream).arrayBuffer());
+    }
+
+    function summaryExportRows() {
+      return [["Site Prefix", "Total", "Delivered", "RTO", "Cancelled", "Shipped + Out for delivery", "Other", "Delivery Ratio"]]
+        .concat(state.groups.map(row => [row.prefix, row.total, row.delivered, row.rto, row.cancelled, row.shipped, row.other, row.ratio.toFixed(2) + "%"]));
+    }
+
+    function detailExportRows() {
+      return [["Product Description", "Total", "Delivered", "RTO", "Cancelled", "Shipped + Out for delivery", "Delivery Ratio"]]
+        .concat(productGroups(state.selectedPrefix).map(row => [row.prefix, row.total, row.delivered, row.rto, row.cancelled, row.shipped, row.ratio.toFixed(2) + "%"]));
+    }
+
+    function downloadCsv(filename, rows) {
+      const csv = rows.map(row => row.map(value => `"${String(value).replaceAll('"', '""')}"`).join(",")).join("\n");
+      const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function resetApp() {
+      state.rows = [];
+      state.groups = [];
+      state.sourceNames = [];
+      state.selectedPrefix = null;
+      els.rowCount.textContent = "0";
+      els.prefixCount.textContent = "0";
+      els.selectedPrefix.textContent = "None";
+      els.sourceName.textContent = "No file loaded";
+      els.summaryBody.innerHTML = `<tr><td colspan="8" class="detail-empty">Upload a file to begin.</td></tr>`;
+      els.detailBody.innerHTML = `<tr><td colspan="7" class="detail-empty">No prefix selected.</td></tr>`;
+      els.detailTitle.textContent = "Click a prefix row";
+      els.fileInput.value = "";
+      els.resetButton.disabled = true;
+      els.exportSummary.disabled = true;
+      els.exportDetail.disabled = true;
+      clearError();
+    }
+
+    function findColumn(rows, expected) {
+      const expectedNorm = normalizeHeader(expected);
+      const headers = Object.keys(rows[0] || {});
+      return headers.find(header => normalizeHeader(header) === expectedNorm);
+    }
+
+    function normalizeHeader(value) {
+      return clean(value).toLowerCase().replace(/[^a-z0-9]+/g, "");
+    }
+
+    function normalizeStatus(value) {
+      return clean(value).toUpperCase().replace(/\s+/g, "_");
+    }
+
+    function clean(value) {
+      return String(value ?? "").replace(/^\uFEFF/, "").trim();
+    }
+
+    function sortRows(rows, sort) {
+      return [...rows].sort((a, b) => {
+        const av = a[sort.key];
+        const bv = b[sort.key];
+        const result = typeof av === "string" ? naturalCompare(av, bv) : av - bv;
+        return result * sort.dir;
+      });
+    }
+
+    function naturalCompare(a, b) {
+      return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" });
+    }
+
+    function ratioMarkup(value) {
+      const width = Math.max(0, Math.min(100, value));
+      return `<span class="ratio"><span class="meter"><span style="width:${width}%"></span></span>${value.toFixed(1)}%</span>`;
+    }
+
+    function formatNumber(value) {
+      return Number(value || 0).toLocaleString();
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
+    }
+
+    function escapeAttr(value) {
+      return escapeHtml(value).replace(/`/g, "&#096;");
+    }
+
+    function decodeBytes(bytes) {
+      return new TextDecoder().decode(bytes);
+    }
+
+    function showError(message) {
+      els.errorBox.hidden = false;
+      els.errorBox.textContent = message;
+    }
+
+    function clearError() {
+      els.errorBox.hidden = true;
+      els.errorBox.textContent = "";
+    }
+  </script>
+</body>
+</html>
