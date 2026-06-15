@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GeoViewer Pro - WKT & GeoJSON Leaflet Visualizer</title>
+  <meta name="description" content="A premium, interactive web application to validate and visualize Well-Known Text (WKT) and GeoJSON geometries on a Leaflet map.">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  
+  <!-- Mapbox Wellknown JS (WKT Parser) -->
+  <script src="https://cdn.jsdelivr.net/npm/wellknown@0.5.0/wellknown.js"></script>
+
+  <!-- Proj4, JSZip, togeojson, Turf.js CDN Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/togeojson/0.16.0/togeojson.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+  <script src="https://unpkg.com/shpjs@latest/dist/shp.js"></script>
+
+  <!-- Chart.js & Leaflet Heatmap CDNs -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+  <!-- Leaflet MarkerCluster CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+  <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+
+  <!-- Leaflet-Geoman Editing CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.css" />
+  <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.min.js"></script>
+  
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar Panel -->
+    <aside class="sidebar-panel">
+      <header class="app-header">
+        <div class="logo-area">
+          <div class="logo-icon">
+            <i class="fa-solid fa-earth-americas"></i>
+          </div>
+          <div class="logo-text">
+            <h1>GeoViewer <span class="badge-pro">PRO</span></h1>
+            <p class="tagline">WKT & GeoJSON Visualizer</p>
+          </div>
+        </div>
+      </header>
+
+      <div class="sidebar-scroll-content">
+        <!-- Input Source Tabs -->
+        <div class="input-tabs">
+          <button class="tab-btn active" data-tab="text" id="tab-btn-text"><i class="fa-solid fa-keyboard"></i> Paste & Drop</button>
+          <button class="tab-btn" data-tab="url" id="tab-btn-url"><i class="fa-solid fa-link"></i> Load from URL</button>
+          <button class="tab-btn" data-tab="story" id="tab-btn-story"><i class="fa-solid fa-book-open"></i> Story Creator</button>
+        </div>
+
+        <!-- Input Section -->
+        <section class="panel-section" id="geometry-input-panel">
+          <div class="section-title-wrapper">
+            <h2 class="section-title"><i class="fa-solid fa-code"></i> Input Geometry</h2>
+            <div class="format-select-wrapper">
+              <label for="format-select" class="sr-only">Format Mode</label>
+              <select id="format-select" class="custom-select">
+                <option value="auto">Auto Detect</option>
+                <option value="wkt">WKT</option>
+                <option value="geojson">GeoJSON</option>
+                <option value="kml">KML</option>
+                <option value="kmz">KMZ (Zipped)</option>
+                <option value="shp">Shapefile (ZIP)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Projection Selection (visible only for WKT) -->
+          <div id="projection-select-container" class="projection-select-container hidden">
+            <label for="projection-select" class="projection-label"><i class="fa-solid fa-earth-europe"></i> WKT Projection:</label>
+            <select id="projection-select" class="custom-select">
+              <option value="4326">WGS 84 (EPSG:4326) - Lat/Lng</option>
+              <option value="27700">British National Grid (EPSG:27700) - BNG</option>
+            </select>
+          </div>
+
+          <!-- URL Input Container (hidden by default) -->
+          <div id="url-input-container" class="url-input-container hidden">
+            <div class="url-input-wrapper">
+              <input type="url" id="geo-url-input" class="geo-url-input" placeholder="Paste GeoJSON, WKT, or KML URL here..." />
+              <button id="btn-fetch-url" class="btn-fetch-url" title="Load remote dataset" aria-label="Load remote dataset">
+                <i class="fa-solid fa-cloud-arrow-down"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="textarea-container" id="text-input-wrapper">
+            <textarea id="geo-input" class="geo-textarea" placeholder="Paste WKT, GeoJSON, or KML/KMZ text here..." spellcheck="false"></textarea>
+            <button id="btn-clear-input" class="clear-input-btn" title="Clear input text" aria-label="Clear input text">
+              <i class="fa-solid fa-circle-xmark"></i>
+            </button>
+          </div>
+
+          <!-- File Upload Uploader -->
+          <div class="file-uploader-container" id="file-uploader-wrapper">
+            <div id="file-dropzone" class="file-dropzone">
+              <i class="fa-solid fa-file-arrow-up dropzone-icon"></i>
+              <p class="dropzone-text">Drag & Drop or <span class="browse-link">Browse Files</span></p>
+              <p class="dropzone-subtext">Supports WKT, KML/KMZ, ZIP/Shapefile (.shp, .dbf), GeoJSON, TAB</p>
+              <input type="file" id="file-input" class="file-input-raw" accept=".wkt,.kml,.kmz,.zip,.geojson,.json,.tab,.shp,.dbf,.shx,.prj" multiple />
+            </div>
+            <div id="uploaded-file-badge" class="uploaded-file-badge hidden">
+              <i class="fa-solid fa-file-signature"></i>
+              <span id="uploaded-file-name" class="file-name">filename.kml</span>
+              <button id="btn-remove-file" class="remove-file-btn" title="Remove loaded file" aria-label="Remove loaded file">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Buttons Group -->
+          <div class="actions-row">
+            <button id="btn-visualize" class="btn btn-primary">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Visualize Data
+            </button>
+            <button id="btn-clear-all" class="btn btn-secondary">
+              <i class="fa-solid fa-trash-can"></i> Clear Map
+            </button>
+          </div>
+        </section>
+
+        <!-- Story Creator Panel -->
+        <section id="story-creator-panel" class="panel-section hidden">
+          <div class="section-title-wrapper">
+            <h2 class="section-title"><i class="fa-solid fa-book-open"></i> Story Editor</h2>
+            <button id="btn-add-story-slide" class="counter-badge" style="cursor: pointer; border: none; outline: none;" title="Add new slide/chapter">
+              <i class="fa-solid fa-plus"></i> Add Slide
+            </button>
+          </div>
+          <div class="story-slides-container" id="story-slides-container">
+            <div id="story-empty-message" class="empty-state">
+              <i class="fa-solid fa-images"></i>
+              <p>No story chapters added. Set map view and click Add Slide above.</p>
+            </div>
+            <ul id="story-slides-list" class="story-slides-list">
+              <!-- Dynamically populated list of slides -->
+            </ul>
+          </div>
+          <div class="actions-row" id="story-actions-row" style="display: none;">
+            <button id="btn-play-story" class="btn btn-primary" style="flex: 1;">
+              <i class="fa-solid fa-circle-play"></i> Play Map Tour
+            </button>
+          </div>
+        </section>
+
+        <!-- Validation Alert Banner -->
+        <section id="validation-panel" class="validation-panel hidden">
+          <div class="validation-content">
+            <div id="validation-icon" class="validation-icon"></div>
+            <div class="validation-details">
+              <h3 id="validation-title">Validation Status</h3>
+              <p id="validation-message">Message details will appear here.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Sample Geometries Section -->
+        <section class="panel-section">
+          <h2 class="section-title"><i class="fa-solid fa-vial"></i> Quick Templates</h2>
+          <div class="samples-grid">
+            <button class="sample-btn" data-type="wkt-point">WKT Point</button>
+            <button class="sample-btn" data-type="wkt-polygon">WKT Polygon (4326)</button>
+            <button class="sample-btn" data-type="wkt-bng-point">WKT Point (BNG)</button>
+            <button class="sample-btn" data-type="geojson-collection">GeoJSON Collection</button>
+            <button class="sample-btn" data-type="geojson-circle">GeoJSON Circle</button>
+            <button class="sample-btn" data-type="kml-polygon">KML Polygon</button>
+          </div>
+        </section>
+
+        <!-- Spatial Analysis Section -->
+        <section class="panel-section">
+          <h2 class="section-title"><i class="fa-solid fa-chart-line"></i> Spatial Analysis</h2>
+          <div class="analysis-card">
+            <div class="analysis-input-group">
+              <label for="analysis-layer-select" class="analysis-label">Target Layer:</label>
+              <select id="analysis-layer-select" class="custom-select analysis-select">
+                <option value="">-- Select Active Layer --</option>
+              </select>
+            </div>
+            <div class="analysis-input-group">
+              <label for="analysis-buffer-distance" class="analysis-label">Buffer Distance (meters):</label>
+              <input type="number" id="analysis-buffer-distance" class="analysis-input" value="100" min="1" step="10" />
+            </div>
+            <div class="analysis-actions-grid" style="grid-template-columns: repeat(2, 1fr);">
+              <button id="btn-analysis-buffer" class="analysis-btn-action" title="Create buffer zone" disabled>
+                <i class="fa-solid fa-circle-dot"></i> Buffer
+              </button>
+              <button id="btn-analysis-centroid" class="analysis-btn-action" title="Find center point" disabled>
+                <i class="fa-solid fa-location-crosshairs"></i> Centroid
+              </button>
+              <button id="btn-analysis-envelope" class="analysis-btn-action" title="Generate bounding box" disabled>
+                <i class="fa-solid fa-vector-square"></i> Envelope
+              </button>
+              <button id="btn-analysis-heatmap" class="analysis-btn-action" title="Generate density heatmap" disabled>
+                <i class="fa-solid fa-fire"></i> Heatmap
+              </button>
+              <button id="btn-analysis-isochrone" class="analysis-btn-action" style="grid-column: span 2;" title="Generate travel-time contours around a clicked map point">
+                <i class="fa-solid fa-hourglass-half"></i> Travel Contours
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Spatial Operations Section -->
+        <section class="panel-section">
+          <h2 class="section-title"><i class="fa-solid fa-clone"></i> Spatial Operations</h2>
+          <div class="analysis-card">
+            <div class="analysis-input-group">
+              <label for="op-layer-a" class="analysis-label">Layer A (Source):</label>
+              <select id="op-layer-a" class="custom-select analysis-select">
+                <option value="">-- Select Layer A --</option>
+              </select>
+            </div>
+            <div class="analysis-input-group">
+              <label for="op-layer-b" class="analysis-label">Layer B (Overlay):</label>
+              <select id="op-layer-b" class="custom-select analysis-select">
+                <option value="">-- Select Layer B --</option>
+              </select>
+            </div>
+            <div class="analysis-input-group">
+              <label for="op-type-select" class="analysis-label">Operation Type:</label>
+              <select id="op-type-select" class="custom-select analysis-select">
+                <option value="union">Union (Combine)</option>
+                <option value="intersect">Intersection (Overlap)</option>
+                <option value="difference">Difference (A minus B)</option>
+                <option value="join">Spatial Join (Points A in Polygons B)</option>
+              </select>
+            </div>
+            <button id="btn-run-operation" class="btn btn-primary" style="margin-top: 4px; width: 100%;" disabled>
+              <i class="fa-solid fa-play"></i> Run Operation
+            </button>
+          </div>
+        </section>
+
+        <!-- Active Layers Section -->
+        <section class="panel-section flex-grow">
+          <div class="section-title-wrapper">
+            <h2 class="section-title"><i class="fa-solid fa-layer-group"></i> Active Layers</h2>
+            <span id="layer-counter" class="counter-badge">0</span>
+          </div>
+          <div class="layers-container">
+            <div id="empty-layers-message" class="empty-state">
+              <i class="fa-regular fa-folder-open"></i>
+              <p>No layers loaded yet. Paste geometry above to get started.</p>
+            </div>
+            <ul id="layers-list" class="layers-list">
+              <!-- Dynamically populated -->
+            </ul>
+          </div>
+        </section>
+      </div>
+
+      <!-- Slide-over Style Editor Panel -->
+      <div id="style-editor-panel" class="style-editor-panel collapsed">
+        <header class="style-editor-header">
+          <h3><i class="fa-solid fa-palette"></i> Style Editor</h3>
+          <button id="btn-close-style-editor" class="close-style-editor-btn" title="Close Style Editor" aria-label="Close Style Editor">
+            <i class="fa-solid fa-chevron-left"></i> Back
+          </button>
+        </header>
+        <div class="style-editor-content">
+          <h4 id="style-layer-title" class="style-layer-title">Layer Name</h4>
+          
+          <!-- Stroke Settings -->
+          <div class="style-group">
+            <label class="style-group-label">Stroke (Outline)</label>
+            <div class="style-input-row">
+              <label for="style-stroke-color">Color:</label>
+              <input type="color" id="style-stroke-color" value="#8b5cf6" />
+            </div>
+            <div class="style-input-row">
+              <label for="style-stroke-weight">Weight (px):</label>
+              <input type="range" id="style-stroke-weight" min="1" max="10" value="3" />
+              <span id="val-stroke-weight" class="style-val-text">3px</span>
+            </div>
+            <div class="style-input-row">
+              <label for="style-stroke-opacity">Opacity (%):</label>
+              <input type="range" id="style-stroke-opacity" min="0" max="100" value="100" />
+              <span id="val-stroke-opacity" class="style-val-text">100%</span>
+            </div>
+            <div class="style-input-row">
+              <label for="style-stroke-dash">Style:</label>
+              <select id="style-stroke-dash" class="custom-select">
+                <option value="solid">Solid</option>
+                <option value="dashed">Dashed</option>
+                <option value="dotted">Dotted</option>
+              </select>
+            </div>
+          </div>
+          
+          <!-- Fill Settings -->
+          <div class="style-group" id="style-group-fill">
+            <label class="style-group-label">Fill (Background)</label>
+            <div class="style-input-row">
+              <label for="style-fill-color">Color:</label>
+              <input type="color" id="style-fill-color" value="#6366f1" />
+            </div>
+            <div class="style-input-row">
+              <label for="style-fill-opacity">Opacity (%):</label>
+              <input type="range" id="style-fill-opacity" min="0" max="100" value="15" />
+              <span id="val-fill-opacity" class="style-val-text">15%</span>
+            </div>
+          </div>
+          
+          <!-- Marker Settings -->
+          <div class="style-group" id="style-group-marker">
+            <label class="style-group-label">Marker Symbol</label>
+            <div class="style-input-row">
+              <label for="style-marker-type">Type:</label>
+              <select id="style-marker-type" class="custom-select">
+                <option value="circle">Circle Marker</option>
+                <option value="icon">FA Icon Marker</option>
+                <option value="pin">Default Leaflet Pin</option>
+              </select>
+            </div>
+            <div class="style-input-row" id="style-marker-cluster-row">
+              <label for="style-marker-cluster-checkbox">Cluster Points:</label>
+              <input type="checkbox" id="style-marker-cluster-checkbox" style="cursor: pointer; width: auto; margin-left: 8px;" />
+            </div>
+            
+            <!-- Circle Marker options -->
+            <div id="style-marker-circle-options">
+              <div class="style-input-row">
+                <label for="style-marker-radius">Radius (px):</label>
+                <input type="range" id="style-marker-radius" min="3" max="30" value="8" />
+                <span id="val-marker-radius" class="style-val-text">8px</span>
+              </div>
+            </div>
+            
+            <!-- Icon Marker options -->
+            <div id="style-marker-icon-options" class="hidden">
+              <div class="style-input-row">
+                <label for="style-marker-icon-select">Icon:</label>
+                <select id="style-marker-icon-select" class="custom-select">
+                  <option value="fa-location-dot">Location Pin</option>
+                  <option value="fa-star">Star</option>
+                  <option value="fa-flag">Flag</option>
+                  <option value="fa-circle-info">Info Circle</option>
+                  <option value="fa-house">Home</option>
+                  <option value="fa-landmark">Landmark</option>
+                  <option value="fa-camera">Camera</option>
+                  <option value="fa-circle">Circle Dot</option>
+                </select>
+              </div>
+              <div class="style-input-row">
+                <label for="style-marker-icon-size">Icon Size:</label>
+                <input type="range" id="style-marker-icon-size" min="12" max="48" value="20" />
+                <span id="val-marker-icon-size" class="style-val-text">20px</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="app-footer">
+        <p>GeoViewer Pro &bull; Made with Leaflet</p>
+      </footer>
+    </aside>
+
+    <!-- Map Panel -->
+    <main class="map-panel">
+      <!-- Leaflet Map Div -->
+      <div id="map"></div>
+
+      <!-- Custom Basemap Switcher Overlay -->
+      <div class="map-control-overlay basemap-control" id="basemap-selector-card">
+        <button class="basemap-toggle-btn" id="btn-basemap-toggle" title="Change Base Map" aria-label="Change Base Map">
+          <i class="fa-solid fa-images"></i> Map Styles
+        </button>
+        <div class="basemap-options-dropdown hidden" id="basemap-dropdown">
+          <div class="basemap-option-card active" data-basemap="cartodb_dark">
+            <div class="basemap-thumbnail dark-thumb"></div>
+            <div class="basemap-info">
+              <span class="basemap-name">Dark Matter</span>
+              <span class="basemap-desc">CartoDB Dark Theme</span>
+            </div>
+          </div>
+          <div class="basemap-option-card" data-basemap="cartodb_light">
+            <div class="basemap-thumbnail light-thumb"></div>
+            <div class="basemap-info">
+              <span class="basemap-name">Positron</span>
+              <span class="basemap-desc">CartoDB Light Theme</span>
+            </div>
+          </div>
+          <div class="basemap-option-card" data-basemap="cartodb_voyager">
+            <div class="basemap-thumbnail voyager-thumb"></div>
+            <div class="basemap-info">
+              <span class="basemap-name">Voyager</span>
+              <span class="basemap-desc">CartoDB Colored Theme</span>
+            </div>
+          </div>
+          <div class="basemap-option-card" data-basemap="esri_satellite">
+            <div class="basemap-thumbnail satellite-thumb"></div>
+            <div class="basemap-info">
+              <span class="basemap-name">Satellite</span>
+              <span class="basemap-desc">ESRI World Imagery</span>
+            </div>
+          </div>
+          <div class="basemap-option-card" data-basemap="osm_standard">
+            <div class="basemap-thumbnail osm-thumb"></div>
+            <div class="basemap-info">
+              <span class="basemap-name">OpenStreetMap</span>
+              <span class="basemap-desc">OSM Standard Tiles</span>
+            </div>
+          </div>
+
+          <!-- Opacity Slider -->
+          <div class="basemap-opacity-control">
+            <div class="opacity-label-row">
+              <span class="opacity-title"><i class="fa-solid fa-circle-half-stroke"></i> Basemap Opacity</span>
+              <span id="basemap-opacity-value" class="opacity-value-text">100%</span>
+            </div>
+            <input type="range" id="basemap-opacity-slider" min="10" max="100" value="100" class="opacity-slider" />
+          </div>
+
+          <!-- Live Feeds/Overlays Section -->
+          <div class="basemap-divider" style="margin: 8px 0; border-top: 1px solid var(--border-color);"></div>
+          <div class="live-feeds-section" style="padding: 4px 12px 8px 12px;">
+            <span class="opacity-title" style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); display: block; margin-bottom: 6px;"><i class="fa-solid fa-satellite-dish"></i> Live Overlays</span>
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <label class="checkbox-container" style="font-size: 11px; color: var(--text-main); display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+                <input type="checkbox" id="feed-weather-radar" style="cursor: pointer;" /> Live Rain Radar
+              </label>
+              <label class="checkbox-container" style="font-size: 11px; color: var(--text-main); display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+                <input type="checkbox" id="feed-earthquakes" style="cursor: pointer;" /> USGS Earthquakes (24h)
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Custom Floating Map Utilities -->
+      <div class="map-control-overlay map-utilities">
+        <button id="btn-fit-all" class="utility-btn" title="Zoom to Fit All Layers" aria-label="Zoom to Fit All Layers">
+          <i class="fa-solid fa-expand"></i>
+        </button>
+        <button id="btn-locate-user" class="utility-btn" title="Zoom to My Location" aria-label="Zoom to My Location">
+          <i class="fa-solid fa-location-crosshairs"></i>
+        </button>
+        <button id="btn-measure-tool" class="utility-btn" title="Measure Distance & Area" aria-label="Measure Distance & Area">
+          <i class="fa-solid fa-ruler-combined"></i>
+        </button>
+        <button id="btn-swipe-toggle" class="utility-btn" title="Toggle Split Basemap Swipe" aria-label="Toggle Split Basemap Swipe">
+          <i class="fa-solid fa-columns"></i>
+        </button>
+        <button id="btn-timezone-lookup" class="utility-btn" title="Timezone & Local Time Lookup" aria-label="Timezone & Local Time Lookup">
+          <i class="fa-solid fa-clock"></i>
+        </button>
+      </div>
+
+      <!-- Custom Floating Search Bar -->
+      <div class="map-control-overlay search-control" id="search-control">
+        <div class="search-input-wrapper">
+          <input type="text" id="map-search-input" placeholder="Search address or place..." spellcheck="false" />
+          <button id="btn-map-search" title="Search location" aria-label="Search location">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </button>
+        </div>
+        <ul id="search-results-list" class="search-results-list hidden">
+          <!-- Populated dynamically -->
+        </ul>
+      </div>
+
+      <!-- Story Map Presentation Player Overlay -->
+      <div class="map-control-overlay story-player-card hidden" id="story-player-card">
+        <div class="story-player-header">
+          <span class="story-slide-badge" id="player-slide-index">Slide 1 of 5</span>
+          <button id="btn-close-story-player" class="story-player-close-btn" title="Exit Presentation" aria-label="Exit Presentation"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="story-player-body">
+          <h3 id="player-slide-title">Chapter Title</h3>
+          <p id="player-slide-desc">This is the narrative details for the current slide.</p>
+        </div>
+        <div class="story-player-footer">
+          <button id="btn-prev-slide" class="story-nav-btn"><i class="fa-solid fa-chevron-left"></i> Prev</button>
+          <div class="story-nav-dots" id="player-nav-dots">
+            <!-- Dynamic dots indicators -->
+          </div>
+          <button id="btn-next-slide" class="story-nav-btn">Next <i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+      </div>
+
+      <!-- Interactive Measurement Control Overlay -->
+      <div class="map-control-overlay measurement-control hidden" id="measurement-control">
+        <div class="measurement-header">
+          <span class="measurement-title"><i class="fa-solid fa-ruler-combined"></i> Measure Tool</span>
+          <button id="btn-close-measure" class="measurement-close-btn" title="Close Measure Tool" aria-label="Close Measure Tool"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="measurement-body">
+          <div class="measurement-modes">
+            <button id="btn-measure-line" class="measure-mode-btn active" title="Measure Distance (Line)"><i class="fa-solid fa-route"></i> Distance</button>
+            <button id="btn-measure-poly" class="measure-mode-btn" title="Measure Area (Polygon)"><i class="fa-solid fa-draw-polygon"></i> Area</button>
+          </div>
+          <div class="measurement-results">
+            <div class="result-row">
+              <span class="result-label">Current:</span>
+              <span class="result-value" id="measure-current-value">0.00 m</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Custom Floating Coordinates Box -->
+      <div class="map-control-overlay coordinates-display" id="coords-box">
+        <span class="coord-label">LAT:</span> <span class="coord-value" id="coord-lat">0.000000</span>
+        <span class="coord-divider">|</span>
+        <span class="coord-label">LNG:</span> <span class="coord-value" id="coord-lng">0.000000</span>
+      </div>
+
+      <!-- Swipe Splitter Divider -->
+      <div id="swipe-divider" class="swipe-divider hidden">
+        <div class="swipe-divider-handle">
+          <i class="fa-solid fa-arrows-left-right"></i>
+        </div>
+      </div>
+
+      <!-- Collapsible Attribute Table Drawer -->
+      <div class="attribute-table-panel collapsed" id="attribute-table-panel">
+        <header class="table-header" id="table-header">
+          <div class="table-title">
+            <i class="fa-solid fa-table"></i> Spatial Attributes: <span id="table-layer-name">None Loaded</span>
+          </div>
+          <div class="table-header-actions">
+            <button id="btn-toggle-table-panel" class="table-header-btn" title="Toggle table panel" aria-label="Toggle table panel">
+              <i class="fa-solid fa-chevron-up" id="table-toggle-icon"></i> Table
+            </button>
+          </div>
+        </header>
+        
+        <!-- Attribute Table Filter Row -->
+        <div class="table-filter-row hidden" id="table-filter-row">
+          <div class="table-filter-wrapper">
+            <i class="fa-solid fa-filter filter-icon"></i>
+            <input type="text" id="table-filter-input" placeholder="Filter rows (e.g. name=Greenwich or radius>100)..." spellcheck="false" />
+            <button id="btn-clear-table-filter" class="clear-filter-btn" title="Clear filter" aria-label="Clear filter">
+              <i class="fa-solid fa-circle-xmark"></i>
+            </button>
+          </div>
+          <span id="table-filter-count" class="filter-count-badge">0 features</span>
+        </div>
+        
+        <div class="table-content-wrapper" id="table-content-wrapper">
+          <div class="table-empty-state">
+            <i class="fa-solid fa-table-list"></i>
+            <p>Select a layer and click its table action, or load a dataset with properties.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Collapsible Timeline Player Drawer -->
+      <div class="attribute-table-panel collapsed" id="timeline-player-panel" style="z-index: 1090;">
+        <header class="table-header" id="timeline-header">
+          <div class="table-title">
+            <i class="fa-solid fa-clock"></i> Temporal Playback Timeline: <span id="timeline-layer-name">None Selected</span>
+          </div>
+          <div class="table-header-actions">
+            <button id="btn-close-timeline" class="table-header-btn" title="Close Timeline" aria-label="Close Timeline">
+              <i class="fa-solid fa-xmark"></i> Close
+            </button>
+          </div>
+        </header>
+        
+        <div class="timeline-controls-row" style="padding: 12px 16px; display: flex; align-items: center; gap: 16px; background-color: rgba(9, 13, 22, 0.4);">
+          <button id="btn-timeline-play" class="btn btn-primary" style="padding: 6px 16px; min-width: 90px; display: flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-play"></i> Play
+          </button>
+          <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 4px;">
+            <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted);">
+              <span id="timeline-start-val">-</span>
+              <span id="timeline-current-val" style="color: #a78bfa; font-weight: 600;">-</span>
+              <span id="timeline-end-val">-</span>
+            </div>
+            <input type="range" id="timeline-slider" min="0" max="100" value="0" style="width: 100%; cursor: pointer;" disabled />
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-muted);">
+            <label for="timeline-speed">Speed:</label>
+            <select id="timeline-speed" class="custom-select" style="padding: 4px; font-size: 11px; width: 70px;">
+              <option value="1000">Slow</option>
+              <option value="500" selected>Normal</option>
+              <option value="200">Fast</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Collapsible Elevation Profile Drawer -->
+      <div class="attribute-table-panel collapsed" id="elevation-profile-panel" style="z-index: 1080;">
+        <header class="table-header" id="elevation-header">
+          <div class="table-title">
+            <i class="fa-solid fa-mountain-sun"></i> Elevation Profile: <span id="elevation-layer-name">None Selected</span>
+          </div>
+          <div class="table-header-actions">
+            <button id="btn-close-elevation" class="table-header-btn" title="Close Elevation Profile" aria-label="Close Elevation Profile">
+              <i class="fa-solid fa-xmark"></i> Close
+            </button>
+          </div>
+        </header>
+        <div class="table-content-wrapper" style="height: 180px; padding: 12px 16px; display: flex; align-items: center; justify-content: center; position: relative;">
+          <canvas id="chart-elevation-profile" style="width: 100%; height: 100%;"></canvas>
+          <div id="elevation-empty-state" class="table-empty-state" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: rgba(13, 18, 30, 0.95); z-index: 5;">
+            <i class="fa-solid fa-mountain"></i>
+            <p>Draw a line or select a line layer to plot its elevation profile.</p>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Slide-over Analytics Dashboard Panel (Right Side) -->
+    <aside id="analytics-dashboard-panel" class="analytics-dashboard-panel collapsed">
+      <header class="analytics-header">
+        <h3><i class="fa-solid fa-chart-pie"></i> Viewport Analytics</h3>
+        <button id="btn-close-analytics" class="close-analytics-btn" title="Close Analytics" aria-label="Close Analytics">
+          Close <i class="fa-solid fa-chevron-right"></i>
+        </button>
+      </header>
+      <div class="analytics-content">
+        <h4 id="analytics-layer-title" class="analytics-layer-title">Layer Name</h4>
+        
+        <!-- KPI Badges -->
+        <div class="analytics-kpis">
+          <div class="kpi-card">
+            <span class="kpi-label">Features in View</span>
+            <span id="kpi-features-count" class="kpi-value">0</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Total Measurement</span>
+            <span id="kpi-measurement-sum" class="kpi-value">N/A</span>
+          </div>
+        </div>
+
+        <!-- Geometry Chart -->
+        <div class="chart-group">
+          <span class="chart-group-label">Geometry Types Breakdown</span>
+          <div class="chart-container">
+            <canvas id="chart-geometry-types"></canvas>
+          </div>
+        </div>
+
+        <!-- Attributes Breakdown Chart -->
+        <div class="chart-group" id="chart-group-attributes" style="display: none;">
+          <span class="chart-group-label">Top Attribute Distribution</span>
+          <div class="chart-input-row" style="margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+            <label for="analytics-attribute-select" style="font-size: 11px; color: var(--text-muted);">Group By Attribute:</label>
+            <select id="analytics-attribute-select" class="custom-select" style="padding: 4px 8px; font-size: 11px; width: 60%;"></select>
+          </div>
+          <div class="chart-container">
+            <canvas id="chart-attribute-values"></canvas>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Custom Javascript -->
+  <script src="app.js"></script>
+</body>
+</html>
