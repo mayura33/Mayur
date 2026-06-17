@@ -1,6 +1,11 @@
 // ==========================================================================
 // CONFIGURATION & GLOBAL STATE
 // ==========================================================================
+const FEATURE_TOGGLES = {
+  storyCreator: false,
+  autoConvexHull: true
+};
+
 const BASEMAP_TILES = {
   cartodb_dark: {
     url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
@@ -55,7 +60,10 @@ let slideIdCounter = 0;
 // Advanced Features State
 let activeMeasureMode = null; // 'line', 'polygon', or null
 let measureWorkingLayer = null; // Leaflet-Geoman working layer reference
+let measureDrawStartHandler = null; // Reference to measurement drawstart handler
+let measureCreateHandler = null; // Reference to measurement create handler
 let userLocationMarker = null; // Pulser GPS dot marker
+let liveConvexHullLayer = null; // Global layer for Live Convex Hull
 let userLocationCircle = null; // GPS Accuracy circle
 let activeStyleLayerId = null; // ID of layer currently open in style editor
 
@@ -213,11 +221,16 @@ const elements = {
   // Visual Suite Elements
   btnSwipeToggle: document.getElementById('btn-swipe-toggle'),
   swipeDivider: document.getElementById('swipe-divider'),
+  
+  // Analytics Dashboard Elements
   analyticsDashboardPanel: document.getElementById('analytics-dashboard-panel'),
   btnCloseAnalytics: document.getElementById('btn-close-analytics'),
   analyticsLayerTitle: document.getElementById('analytics-layer-title'),
   kpiFeaturesCount: document.getElementById('kpi-features-count'),
   kpiMeasurementSum: document.getElementById('kpi-measurement-sum'),
+  kpiCentroid: document.getElementById('kpi-centroid'),
+  kpiIntersectCount: document.getElementById('kpi-intersect-count'),
+  kpiUnionCount: document.getElementById('kpi-union-count'),
   analyticsAttributeSelect: document.getElementById('analytics-attribute-select'),
   chartGroupAttributes: document.getElementById('chart-group-attributes'),
   btnAnalysisHeatmap: document.getElementById('btn-analysis-heatmap'),
@@ -262,6 +275,13 @@ function initMap() {
   // Load basemap from localStorage or default to cartodb_dark
   const storedBasemap = localStorage.getItem('geoviewer_basemap_id') || 'cartodb_dark';
   setBasemap(storedBasemap);
+
+  // Apply feature toggles
+  if (!FEATURE_TOGGLES.storyCreator) {
+    if (elements.tabBtnStory) {
+      elements.tabBtnStory.style.display = 'none';
+    }
+  }
 
   // Initialize Leaflet-Geoman Drawing Controls
   map.pm.addControls({
@@ -582,6 +602,7 @@ function switchInputTab(tab) {
     elements.textInputWrapper.classList.add('hidden');
     elements.fileUploaderWrapper.classList.add('hidden');
   } else if (tab === 'story') {
+    if (!FEATURE_TOGGLES.storyCreator) return;
     elements.tabBtnStory.classList.add('active');
     elements.storyCreatorPanel.classList.remove('hidden');
   }
@@ -1337,10 +1358,10 @@ function clearValidationStatus() {
 // ==========================================================================
 // LAYER MANAGEMENT & VISUALIZATION
 // ==========================================================================
-function addGeometryToMap(parsedResult, name) {
+function addGeometryToMap(parsedResult, name, customColor = null) {
   const colorPalette = {
-    stroke: '#8b5cf6',
-    fill: '#6366f1',
+    stroke: customColor || '#8b5cf6',
+    fill: customColor || '#6366f1',
     fillOpacity: 0.15,
     strokeWeight: 3
   };
@@ -1664,6 +1685,13 @@ function toggleLayerEdit(id) {
 }
 
 function updateLayersUI() {
+  elements.layersList.innerHTML = '';
+  
+  // Update live convex hull based on current visible layers
+  if (typeof updateLiveConvexHull === 'function') {
+    updateLiveConvexHull();
+  }
+  
   elements.layerCounter.textContent = loadedLayers.length;
   updateAnalysisLayerSelect();
   updateOpLayersSelect();
@@ -1876,6 +1904,7 @@ function updateAnalysisButtonsState() {
   elements.btnAnalysisBuffer.disabled = !layerSelected;
   elements.btnAnalysisCentroid.disabled = !layerSelected;
   elements.btnAnalysisEnvelope.disabled = !layerSelected;
+  elements.btnAnalysisHeatmap.disabled = !layerSelected;
 }
 
 function handleSpatialBuffer() {
@@ -1966,6 +1995,89 @@ function handleSpatialEnvelope() {
     showValidationStatus('success', 'Envelope Generated', `Successfully generated bounding envelope for "${layerRecord.name}".`);
   } catch (err) {
     showValidationStatus('error', 'Envelope Failed', `Error generating envelope: ${err.message}`);
+  }
+}
+
+function updateLiveConvexHull() {
+  if (!FEATURE_TOGGLES.autoConvexHull) {
+    if (liveConvexHullLayer) {
+      map.removeLayer(liveConvexHullLayer);
+      liveConvexHullLayer = null;
+    }
+    return;
+  }
+
+  // Gather all valid geometries currently drawn/loaded on the map
+  const allFeatures = [];
+  loadedLayers.forEach(l => {
+    // Only include visible layers
+    if (l.visible && l.layer) {
+      try {
+        const geojson = l.layer.toGeoJSON();
+        turf.featureEach(geojson, (f) => {
+          if (f.geometry) {
+            // Flatten circles to polygons so they can be included in the hull
+            if (f.geometry.type === 'Point' && f.properties && typeof f.properties.radius === 'number') {
+               const circlePoly = turf.circle(f.geometry.coordinates, f.properties.radius, { steps: 32, units: 'meters' });
+               allFeatures.push(circlePoly);
+            } else {
+               allFeatures.push(f);
+            }
+          }
+        });
+      } catch (e) {
+        // Ignore layers that can't be converted
+      }
+    }
+  });
+
+  if (allFeatures.length === 0) {
+    if (liveConvexHullLayer) {
+      map.removeLayer(liveConvexHullLayer);
+      liveConvexHullLayer = null;
+    }
+    return;
+  }
+
+  try {
+    const fc = turf.featureCollection(allFeatures);
+    const hull = turf.convex(fc);
+    
+    if (liveConvexHullLayer) {
+      map.removeLayer(liveConvexHullLayer);
+      liveConvexHullLayer = null;
+    }
+    
+    if (hull) {
+      const areaMeters = turf.area(hull);
+      const areaKm = areaMeters / 1000000;
+      const areaLabel = `${areaMeters.toFixed(2)} m² / ${areaKm.toFixed(6)} km²`;
+
+      liveConvexHullLayer = L.geoJSON(hull, {
+        style: {
+          color: '#f43f5e',
+          weight: 2,
+          dashArray: '5, 5',
+          fillColor: '#f43f5e',
+          fillOpacity: 0.05,
+          interactive: true
+        },
+        onEachFeature: function(feature, layer) {
+          layer.bindPopup(`<b>Live Convex Hull</b><br>Total Area: <span style="color:#f43f5e; font-weight:bold;">${areaLabel}</span>`);
+        }
+      }).addTo(map);
+      
+      // Ensure the hull stays at the back so it doesn't block clicks on the actual features
+      if (liveConvexHullLayer.bringToBack) {
+        liveConvexHullLayer.bringToBack();
+      }
+    }
+  } catch (err) {
+    // Can fail if all points are perfectly collinear or not enough points. Just clear the layer.
+    if (liveConvexHullLayer) {
+      map.removeLayer(liveConvexHullLayer);
+      liveConvexHullLayer = null;
+    }
   }
 }
 
@@ -3207,6 +3319,12 @@ function flattenToSinglePolygon(geojson) {
       if (flattened) polygons.push(flattened);
     });
   } else if (geojson.type === 'Feature') {
+    if (geojson.geometry && geojson.geometry.type === 'Point' && geojson.properties && typeof geojson.properties.radius === 'number') {
+      const center = geojson.geometry.coordinates;
+      const radiusMeters = geojson.properties.radius;
+      const circlePoly = turf.circle(center, radiusMeters, { steps: 64, units: 'meters' });
+      return circlePoly;
+    }
     return flattenToSinglePolygon(geojson.geometry);
   } else if (geojson.type === 'Polygon' || geojson.type === 'MultiPolygon') {
     return turf.feature(geojson);
@@ -3243,13 +3361,21 @@ function handleSpatialOperation() {
 
       const pointFeatures = [];
       turf.featureEach(geojsonA, (f) => {
-        if (f.geometry && (f.geometry.type === 'Point' || f.geometry.type === 'MultiPoint')) {
-          pointFeatures.push(f);
+        if (f.geometry) {
+          if (f.geometry.type === 'Point' || f.geometry.type === 'MultiPoint') {
+            pointFeatures.push(f);
+          } else {
+            // For Polygons/Lines, use their centroid to allow joining
+            try {
+              const centroid = turf.centroid(f);
+              if (centroid) pointFeatures.push(centroid);
+            } catch (e) {}
+          }
         }
       });
 
       if (pointFeatures.length === 0) {
-        throw new Error("Layer A (Source) must contain point geometries for a Spatial Join.");
+        throw new Error("Layer A (Source) must contain valid geometries for a Spatial Join.");
       }
 
       const polygonsClone = JSON.parse(JSON.stringify(geojsonB));
@@ -3370,7 +3496,12 @@ function handleSpatialOperation() {
       originalCRS: 'EPSG:4326'
     };
 
-    addGeometryToMap(parsedResult, layerName);
+    // Give different operations distinct colors for better visibility
+    let opColor = '#ec4899'; // Pink for union
+    if (opType === 'intersect') opColor = '#f59e0b'; // Amber for intersect
+    else if (opType === 'difference') opColor = '#14b8a6'; // Teal for difference
+
+    addGeometryToMap(parsedResult, layerName, opColor);
     showValidationStatus('success', 'Operation Complete', `Successfully generated "${layerName}".`);
   } catch (err) {
     showValidationStatus('error', 'Operation Failed', `Error: ${err.message}`);
@@ -3596,6 +3727,52 @@ function updateAnalyticsCharts() {
   };
   const measurement = getGeometryMeasurement(tempCollection);
   elements.kpiMeasurementSum.textContent = measurement ? `${measurement.label}: ${measurement.value}` : 'N/A';
+
+  // Calculate new KPIs: Centroid, Intersect Count, Union Count
+  let centroidText = 'N/A';
+  let intersectCount = 0;
+  let unionCount = 0;
+
+  if (visibleFeatures.length > 0) {
+    try {
+      const center = turf.centroid(tempCollection);
+      if (center && center.geometry) {
+        centroidText = `[${center.geometry.coordinates[1].toFixed(5)}, ${center.geometry.coordinates[0].toFixed(5)}]`;
+      }
+    } catch (e) {}
+
+    // Calculate intersections
+    visibleFeatures.forEach((f1, i) => {
+      let intersects = false;
+      for (let j = 0; j < visibleFeatures.length; j++) {
+        if (i !== j) {
+          try {
+            if (turf.booleanIntersects(f1, visibleFeatures[j])) {
+              intersects = true;
+              break;
+            }
+          } catch (e) {}
+        }
+      }
+      if (intersects) intersectCount++;
+    });
+
+    // Calculate union count using our flattener
+    try {
+      const unioned = flattenToSinglePolygon(tempCollection);
+      if (unioned) {
+        if (unioned.geometry.type === 'MultiPolygon' || unioned.geometry.type === 'MultiPoint' || unioned.geometry.type === 'MultiLineString') {
+          unionCount = unioned.geometry.coordinates.length;
+        } else {
+          unionCount = 1;
+        }
+      }
+    } catch (e) {}
+  }
+
+  if (elements.kpiCentroid) elements.kpiCentroid.textContent = centroidText;
+  if (elements.kpiIntersectCount) elements.kpiIntersectCount.textContent = intersectCount.toLocaleString();
+  if (elements.kpiUnionCount) elements.kpiUnionCount.textContent = unionCount.toLocaleString();
 
   // 3. Compute Geometry Breakdown
   const geomCounts = { Point: 0, LineString: 0, Polygon: 0, Other: 0 };

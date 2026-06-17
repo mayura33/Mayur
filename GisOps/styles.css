@@ -89,6 +89,11 @@ body, html {
   border: 0;
 }
 
+/* Global Hidden Utility */
+.hidden {
+  display: none !important;
+}
+
 /* ==========================================================================
    LAYOUT STRUCTURE
    ========================================================================== */
@@ -343,9 +348,7 @@ body, html {
   transition: var(--transition-smooth);
 }
 
-.validation-panel.hidden {
-  display: none;
-}
+
 
 .validation-panel.success {
   background-color: var(--color-success-bg);
@@ -653,9 +656,7 @@ body, html {
   overflow-y: auto;
 }
 
-.basemap-options-dropdown.hidden {
-  display: none;
-}
+
 
 .basemap-option-card {
   display: flex;
@@ -918,9 +919,7 @@ body, html {
   margin-bottom: 8px;
 }
 
-.projection-select-container.hidden {
-  display: none;
-}
+
 
 .projection-label {
   font-size: 11px;
@@ -1013,9 +1012,7 @@ body, html {
   animation: slide-down 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.uploaded-file-badge.hidden {
-  display: none;
-}
+
 
 .uploaded-file-badge i {
   color: #8b5cf6;
@@ -1150,9 +1147,7 @@ body, html {
   margin-bottom: 12px;
 }
 
-.url-input-container.hidden {
-  display: none;
-}
+
 
 .url-input-wrapper {
   display: flex;
@@ -1668,9 +1663,7 @@ body, html {
   flex-direction: column;
 }
 
-.search-results-list.hidden {
-  display: none;
-}
+
 
 .search-result-item {
   padding: 10px 14px;
@@ -1842,9 +1835,7 @@ body, html {
   animation: slide-down 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.story-player-card.hidden {
-  display: none;
-}
+
 
 .story-player-header {
   padding: 12px 16px;
@@ -2004,9 +1995,7 @@ body, html {
   animation: slide-down 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.measurement-control.hidden {
-  display: none;
-}
+
 
 .measurement-header {
   padding: 10px 14px;
@@ -2304,9 +2293,7 @@ body, html {
   animation: slide-down 0.2s ease-out;
 }
 
-.table-filter-row.hidden {
-  display: none;
-}
+
 
 .table-filter-wrapper {
   display: flex;
@@ -2379,9 +2366,7 @@ body, html {
   animation: slide-down 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.layer-options-dropdown.hidden {
-  display: none;
-}
+
 
 .dropdown-item {
   background: none;
@@ -2438,9 +2423,7 @@ body, html {
   user-select: none;
 }
 
-.swipe-divider.hidden {
-  display: none;
-}
+
 
 .swipe-divider-handle {
   position: absolute;
