@@ -259,6 +259,75 @@ const elements = {
   btnTimezoneLookup: document.getElementById('btn-timezone-lookup')
 };
 
+const DEFAULT_VECTOR_RENDERER = L.canvas({ padding: 0.5 });
+const CONVEX_HULL_DEBOUNCE_MS = 150;
+const ANALYTICS_TOPOLOGY_FEATURE_LIMIT = 250;
+let liveConvexHullTimer = null;
+
+function escapeHTML(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[char]);
+}
+
+function formatPropertyValue(value) {
+  if (value === undefined || value === null) return '-';
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value);
+    } catch (e) {
+      return String(value);
+    }
+  }
+  return String(value);
+}
+
+function normalizeHexColor(color, fallback = '#8b5cf6') {
+  let value = String(color || '').trim();
+  if (/^#[0-9a-f]{3}$/i.test(value)) {
+    value = `#${value[1]}${value[1]}${value[2]}${value[2]}${value[3]}${value[3]}`;
+  }
+  return /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
+}
+
+function formatArea(areaSqM, decimals = 3) {
+  return areaSqM >= 1000000
+    ? `${(areaSqM / 1000000).toFixed(decimals)} sq km`
+    : `${Math.round(areaSqM).toLocaleString()} sq m`;
+}
+
+function scheduleLiveConvexHullUpdate() {
+  if (liveConvexHullTimer) {
+    clearTimeout(liveConvexHullTimer);
+  }
+  liveConvexHullTimer = setTimeout(() => {
+    liveConvexHullTimer = null;
+    updateLiveConvexHull();
+  }, CONVEX_HULL_DEBOUNCE_MS);
+}
+
+function updateLayerListPreview(layerRecord) {
+  if (!layerRecord || !elements.layersList) return;
+  const li = elements.layersList.querySelector(`[data-layer-id="${layerRecord.id}"]`);
+  if (!li) return;
+
+  const safeColor = normalizeHexColor(layerRecord.color);
+  const iconEl = li.querySelector('.layer-icon');
+  const picker = li.querySelector('.layer-color-picker');
+
+  if (iconEl) {
+    iconEl.style.backgroundColor = `${safeColor}15`;
+    iconEl.style.color = safeColor;
+  }
+  if (picker) {
+    picker.value = safeColor;
+  }
+}
+
 // ==========================================================================
 // MAP INITIALIZATION & GIS CONTROLS
 // ==========================================================================
@@ -266,6 +335,8 @@ function initMap() {
   // Start centered on London/Greenwich area to showcase standard/BNG coordinate conversions
   map = L.map('map', {
     zoomControl: true,
+    preferCanvas: true,
+    renderer: DEFAULT_VECTOR_RENDERER,
     center: [51.4800, -0.0015],
     zoom: 13
   });
@@ -308,6 +379,8 @@ function initMap() {
 
   // Listen to shape creation events
   map.on('pm:create', function(e) {
+    if (activeMeasureMode) return;
+
     const layer = e.layer;
     const shapeType = e.shape; // Marker, Polyline, Polygon, Rectangle, Circle
     let geojson = layer.toGeoJSON();
@@ -476,6 +549,7 @@ function initMap() {
     elements.valMarkerIconSize.textContent = e.target.value + 'px';
     applyStyleChange();
   });
+  elements.styleMarkerClusterCheckbox.addEventListener('change', applyStyleChange);
 
   // Table Search/Filter Input
   elements.tableFilterInput.addEventListener('input', handleTableFilter);
@@ -788,9 +862,7 @@ function getGeometryMeasurement(geojson) {
     }
     
     if ((hasPolygon || hasCircle) && area > 0) {
-      const valStr = area >= 1000000 
-        ? `${(area / 1000000).toFixed(3)} km²` 
-        : `${Math.round(area).toLocaleString()} m²`;
+      const valStr = formatArea(area);
       
       if (hasCircle && !hasPolygon && circleCount === 1) {
         return { label: 'Area', value: `${valStr} (Radius: ${Math.round(totalCircleRadius)} m)` };
@@ -1377,7 +1449,8 @@ function addGeometryToMap(parsedResult, name, customColor = null) {
           color: colorPalette.stroke,
           weight: colorPalette.strokeWeight,
           opacity: 0.85,
-          fillOpacity: colorPalette.fillOpacity
+          fillOpacity: colorPalette.fillOpacity,
+          renderer: DEFAULT_VECTOR_RENDERER
         });
       }
       return L.circleMarker(latlng, {
@@ -1386,7 +1459,8 @@ function addGeometryToMap(parsedResult, name, customColor = null) {
         color: '#ffffff',
         weight: 1.5,
         opacity: 1,
-        fillOpacity: 0.85
+        fillOpacity: 0.85,
+        renderer: DEFAULT_VECTOR_RENDERER
       });
     },
     style: function(feature) {
@@ -1395,18 +1469,19 @@ function addGeometryToMap(parsedResult, name, customColor = null) {
         weight: colorPalette.strokeWeight,
         opacity: 0.85,
         fillColor: colorPalette.fill,
-        fillOpacity: colorPalette.fillOpacity
+        fillOpacity: colorPalette.fillOpacity,
+        renderer: DEFAULT_VECTOR_RENDERER
       };
     },
     onEachFeature: function(feature, layer) {
       let popupContent = `<div class="popup-details">`;
       popupContent += `<div class="popup-header"><i class="fa-solid fa-circle-info"></i> Feature Details</div>`;
       popupContent += `<div class="popup-body">`;
-      popupContent += `<strong>Type:</strong> ${feature.geometry ? feature.geometry.type : 'N/A'}<br>`;
+      popupContent += `<strong>Type:</strong> ${escapeHTML(feature.geometry ? feature.geometry.type : 'N/A')}<br>`;
       
       // Inject measurements if available
       if (measurement) {
-        popupContent += `<strong style="color: #a78bfa;">${measurement.label}:</strong> ${measurement.value}<br>`;
+        popupContent += `<strong style="color: #a78bfa;">${escapeHTML(measurement.label)}:</strong> ${escapeHTML(measurement.value)}<br>`;
       }
       
       // Properties
@@ -1416,7 +1491,7 @@ function addGeometryToMap(parsedResult, name, customColor = null) {
           propsCopy.wkt = propsCopy.wkt.substring(0, 47) + '...';
         }
         popupContent += `<hr style="margin:6px 0; border:none; border-top:1px solid rgba(255,255,255,0.08);">`;
-        popupContent += `<strong>Properties:</strong><pre style="margin-top:4px; max-height:80px; overflow-y:auto; font-family:var(--font-mono); font-size:9px;">${JSON.stringify(propsCopy, null, 2)}</pre>`;
+        popupContent += `<strong>Properties:</strong><pre style="margin-top:4px; max-height:80px; overflow-y:auto; font-family:var(--font-mono); font-size:9px;">${escapeHTML(JSON.stringify(propsCopy, null, 2))}</pre>`;
       }
       
       popupContent += `</div></div>`;
@@ -1614,6 +1689,7 @@ function toggleLayerEdit(id) {
 
         const handleEditEvent = () => {
           const updatedGeoJSON = getUpdatedGeoJSON(layerRecord.layer, layerRecord.originalGeoJSONType);
+          layerRecord.geoJSONData = updatedGeoJSON;
 
           // Recalculate measurements
           layerRecord.measurement = getGeometryMeasurement(updatedGeoJSON);
@@ -1684,12 +1760,12 @@ function toggleLayerEdit(id) {
   updateLayersUI();
 }
 
-function updateLayersUI() {
+function updateLayersUI({ updateHull = true } = {}) {
   elements.layersList.innerHTML = '';
   
   // Update live convex hull based on current visible layers
-  if (typeof updateLiveConvexHull === 'function') {
-    updateLiveConvexHull();
+  if (updateHull && typeof updateLiveConvexHull === 'function') {
+    scheduleLiveConvexHullUpdate();
   }
   
   elements.layerCounter.textContent = loadedLayers.length;
@@ -1731,24 +1807,25 @@ function updateLayersUI() {
     if (l.measurement) {
       const calcIcon = l.measurement.label === 'Area' ? 'fa-solid fa-chart-area' : (l.measurement.label === 'Length' ? 'fa-solid fa-ruler' : 'fa-solid fa-hashtag');
       measurementHtml = `
-        <span class="measurement-badge" title="${l.measurement.label}: ${l.measurement.value}">
-          <i class="${calcIcon}"></i> ${l.measurement.value}
+        <span class="measurement-badge" title="${escapeHTML(l.measurement.label)}: ${escapeHTML(l.measurement.value)}">
+          <i class="${calcIcon}"></i> ${escapeHTML(l.measurement.value)}
         </span>
       `;
     }
 
-    if (!l.color) {
-      l.color = '#8b5cf6'; // default purple color
-    }
+    l.color = normalizeHexColor(l.color);
+    const safeName = escapeHTML(l.name);
+    const safeType = escapeHTML(l.type);
+    const supportsLayerOptions = l.type !== 'Heatmap' && l.type !== 'Isochrones';
 
     li.innerHTML = `
       <div class="layer-info">
-        <div class="layer-icon" style="background-color: ${l.color}15; color: ${l.color};" title="${l.type}">
+        <div class="layer-icon" style="background-color: ${l.color}15; color: ${l.color};" title="${safeType}">
           <i class="${iconClass}"></i>
         </div>
         <div class="layer-meta">
-          <span class="layer-name" title="${l.name}">${l.name}</span>
-          <span class="layer-type">${l.type}</span>
+          <span class="layer-name" title="${safeName}">${safeName}</span>
+          <span class="layer-type">${safeType}</span>
           <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
             <input type="color" class="layer-color-picker" value="${l.color}" title="Change Layer Color" aria-label="Change Layer Color" />
             ${measurementHtml}
@@ -1763,7 +1840,7 @@ function updateLayersUI() {
           <i class="fa-solid fa-magnifying-glass-plus"></i>
         </button>
         
-        ${l.type === 'Heatmap' ? '' : `
+        ${supportsLayerOptions ? `
         <div class="layer-options-wrapper" style="position: relative; display: inline-block;">
           <button class="layer-action-btn btn-options" title="Layer options" aria-label="Layer options">
             <i class="fa-solid fa-ellipsis-vertical"></i>
@@ -1778,7 +1855,7 @@ function updateLayersUI() {
             <button class="dropdown-item btn-download"><i class="fa-solid fa-download"></i> Export Layer</button>
           </div>
         </div>
-        `}
+        ` : ''}
 
         <button class="layer-action-btn btn-delete" title="Delete layer" aria-label="Delete layer">
           <i class="fa-solid fa-trash-can"></i>
@@ -1791,7 +1868,7 @@ function updateLayersUI() {
     li.querySelector('.btn-toggle').addEventListener('click', () => toggleLayerVisibility(l.id));
     li.querySelector('.btn-delete').addEventListener('click', () => deleteLayer(l.id));
 
-    if (l.type !== 'Heatmap' && l.type !== 'Isochrones') {
+    if (supportsLayerOptions) {
       li.querySelector('.btn-analytics').addEventListener('click', () => openAnalyticsDashboard(l.id));
       li.querySelector('.btn-table').addEventListener('click', () => loadLayerTable(l.id));
       li.querySelector('.btn-timeline').addEventListener('click', () => openTimelinePlayer(l.id));
@@ -1815,7 +1892,7 @@ function updateLayersUI() {
     // Bind color picker listener
     const colorPicker = li.querySelector('.layer-color-picker');
     colorPicker.addEventListener('input', (e) => {
-      const newColor = e.target.value;
+      const newColor = normalizeHexColor(e.target.value);
       l.color = newColor;
       
       // Update layer colors live on map (checking if setStyle is available)
@@ -2051,7 +2128,7 @@ function updateLiveConvexHull() {
     if (hull) {
       const areaMeters = turf.area(hull);
       const areaKm = areaMeters / 1000000;
-      const areaLabel = `${areaMeters.toFixed(2)} m² / ${areaKm.toFixed(6)} km²`;
+      const areaLabel = `${areaMeters.toFixed(2)} sq m / ${areaKm.toFixed(6)} sq km`;
 
       liveConvexHullLayer = L.geoJSON(hull, {
         style: {
@@ -2264,7 +2341,7 @@ async function handleMapSearch() {
     const results = await response.json();
     renderSearchResults(results);
   } catch (err) {
-    elements.searchResultsList.innerHTML = `<li class="search-result-item" style="cursor: default; color: var(--color-error);">Search failed: ${err.message}</li>`;
+    elements.searchResultsList.innerHTML = `<li class="search-result-item" style="cursor: default; color: var(--color-error);">Search failed: ${escapeHTML(err.message)}</li>`;
   }
 }
 
@@ -2393,10 +2470,10 @@ function renderStorySlidesList() {
         <span class="slide-number">Slide ${index + 1}</span>
         <button class="btn-delete-slide" title="Delete slide" aria-label="Delete slide"><i class="fa-solid fa-trash-can"></i></button>
       </div>
-      <input type="text" class="slide-input-title" value="${slide.title}" placeholder="Chapter Title" />
-      <textarea class="slide-textarea-desc" placeholder="Narrative description...">${slide.desc}</textarea>
+      <input type="text" class="slide-input-title" value="${escapeHTML(slide.title)}" placeholder="Chapter Title" />
+      <textarea class="slide-textarea-desc" placeholder="Narrative description...">${escapeHTML(slide.desc)}</textarea>
       <div class="slide-coords-row">
-        <span class="slide-coords-badge" title="Saved Coordinates: ${slide.center[0].toFixed(4)}, ${slide.center[1].toFixed(4)} (Zoom: ${slide.zoom})">
+        <span class="slide-coords-badge" title="Saved Coordinates: ${slide.center[0].toFixed(4)}, ${slide.center[1].toFixed(4)} (Zoom: ${escapeHTML(slide.zoom)})">
           <i class="fa-solid fa-camera"></i> Lat: ${slide.center[0].toFixed(3)}, Lng: ${slide.center[1].toFixed(3)}
         </span>
         <button class="btn-capture-view" title="Capture current map view">Capture View</button>
@@ -2708,7 +2785,7 @@ function locateUser() {
       });
 
       userLocationMarker = L.marker([lat, lng], { icon: gpsIcon }).addTo(map);
-      userLocationMarker.bindPopup(`<b>My Current Location</b><br>Accuracy: ±${Math.round(accuracy)} meters`).openPopup();
+      userLocationMarker.bindPopup(`<b>My Current Location</b><br>Accuracy: +/-${Math.round(accuracy)} meters`).openPopup();
 
       // Accuracy boundary circle
       userLocationCircle = L.circle([lat, lng], {
@@ -2722,7 +2799,7 @@ function locateUser() {
       // Zoom and center map
       map.setView([lat, lng], 16);
 
-      showValidationStatus('success', 'Location Found', `Centered map on current location (Accuracy: ±${Math.round(accuracy)}m).`);
+      showValidationStatus('success', 'Location Found', `Centered map on current location (Accuracy: +/-${Math.round(accuracy)}m).`);
     },
     (error) => {
       let msg = 'Failed to retrieve location.';
@@ -2770,11 +2847,19 @@ function closeMeasureTool() {
 function stopMeasurementDrawing() {
   if (activeMeasureMode) {
     map.pm.disableDraw();
-    map.off('pm:drawstart');
-    map.off('pm:create');
     activeMeasureMode = null;
   }
+  if (measureDrawStartHandler) {
+    map.off('pm:drawstart', measureDrawStartHandler);
+    measureDrawStartHandler = null;
+  }
+  if (measureCreateHandler) {
+    map.off('pm:create', measureCreateHandler);
+    measureCreateHandler = null;
+  }
   if (measureWorkingLayer) {
+    measureWorkingLayer.off('pm:vertexadded', updateLiveMeasurement);
+    measureWorkingLayer.off('pm:change', updateLiveMeasurement);
     map.removeLayer(measureWorkingLayer);
     measureWorkingLayer = null;
   }
@@ -2812,15 +2897,16 @@ function setMeasureMode(mode) {
   }
 
   // Monitor vertex additions for real-time calculation updates
-  map.on('pm:drawstart', ({ workingLayer }) => {
+  measureDrawStartHandler = ({ workingLayer }) => {
     measureWorkingLayer = workingLayer;
     
     workingLayer.on('pm:vertexadded', updateLiveMeasurement);
     workingLayer.on('pm:change', updateLiveMeasurement);
-  });
+  };
+  map.on('pm:drawstart', measureDrawStartHandler);
 
   // Finish shape drawing
-  map.once('pm:create', (e) => {
+  measureCreateHandler = (e) => {
     const layer = e.layer;
     let finalValue = '';
     let label = '';
@@ -2837,8 +2923,8 @@ function setMeasureMode(mode) {
       const areaSqM = turf.area(geojson);
       label = 'Area';
       finalValue = areaSqM > 1000000 
-        ? `${(areaSqM / 1000000).toFixed(2)} km²` 
-        : `${areaSqM.toFixed(2)} m²`;
+        ? `${(areaSqM / 1000000).toFixed(2)} sq km` 
+        : `${areaSqM.toFixed(2)} sq m`;
     }
 
     layer.bindPopup(`<b>Measurement Result</b><br>${label}: ${finalValue}`).openPopup();
@@ -2856,7 +2942,8 @@ function setMeasureMode(mode) {
 
     showValidationStatus('success', 'Measurement Saved', `Saved "${cleanName}" in Active Layers.`);
     closeMeasureTool();
-  });
+  };
+  map.once('pm:create', measureCreateHandler);
 }
 
 function updateLiveMeasurement() {
@@ -2885,8 +2972,8 @@ function updateLiveMeasurement() {
           const poly = turf.polygon([coords]);
           const areaSqM = turf.area(poly);
           currentValText = areaSqM > 1000000 
-            ? `${(areaSqM / 1000000).toFixed(2)} km²` 
-            : `${areaSqM.toFixed(2)} m²`;
+            ? `${(areaSqM / 1000000).toFixed(2)} sq km` 
+            : `${areaSqM.toFixed(2)} sq m`;
         }
       }
     }
@@ -2921,7 +3008,10 @@ function openStyleEditor(layerId) {
   if (layerRecord.markerIconSize === undefined) layerRecord.markerIconSize = 20;
 
   // Sync inputs
-  elements.styleStrokeColor.value = layerRecord.color || '#8b5cf6';
+  layerRecord.color = normalizeHexColor(layerRecord.color);
+  layerRecord.fillColor = normalizeHexColor(layerRecord.fillColor, layerRecord.color);
+
+  elements.styleStrokeColor.value = layerRecord.color;
   elements.styleStrokeWeight.value = layerRecord.strokeWidth;
   elements.valStrokeWeight.textContent = `${layerRecord.strokeWidth}px`;
   elements.styleStrokeOpacity.value = layerRecord.strokeOpacity;
@@ -2995,12 +3085,12 @@ function applyStyleChange() {
   const oldCluster = layerRecord.cluster || false;
 
   // Retrieve current form values
-  layerRecord.color = elements.styleStrokeColor.value;
+  layerRecord.color = normalizeHexColor(elements.styleStrokeColor.value);
   layerRecord.strokeWidth = parseInt(elements.styleStrokeWeight.value);
   layerRecord.strokeOpacity = parseInt(elements.styleStrokeOpacity.value);
   layerRecord.strokeDash = elements.styleStrokeDash.value;
   
-  layerRecord.fillColor = elements.styleFillColor.value;
+  layerRecord.fillColor = normalizeHexColor(elements.styleFillColor.value, layerRecord.color);
   layerRecord.fillOpacity = parseInt(elements.styleFillOpacity.value);
   
   layerRecord.markerType = elements.styleMarkerType.value;
@@ -3022,7 +3112,8 @@ function applyStyleChange() {
     opacity: layerRecord.strokeOpacity / 100,
     fillColor: layerRecord.fillColor,
     fillOpacity: layerRecord.fillOpacity / 100,
-    dashArray: dashArray
+    dashArray: dashArray,
+    renderer: DEFAULT_VECTOR_RENDERER
   };
 
   const recreateMarkersNeeded = (oldMarkerType !== layerRecord.markerType) || (oldCluster !== layerRecord.cluster);
@@ -3045,7 +3136,7 @@ function applyStyleChange() {
       }
 
       if (sub instanceof L.Marker && layerRecord.markerType === 'icon') {
-        const iconHtml = `<i class="fa-solid ${layerRecord.markerIcon}" style="color: ${layerRecord.color}; font-size: ${layerRecord.markerIconSize}px;"></i>`;
+        const iconHtml = `<i class="fa-solid ${escapeHTML(layerRecord.markerIcon)}" style="color: ${layerRecord.color}; font-size: ${layerRecord.markerIconSize}px;"></i>`;
         const customIcon = L.divIcon({
           className: 'custom-fa-icon-marker',
           html: iconHtml,
@@ -3057,7 +3148,7 @@ function applyStyleChange() {
     });
   }
 
-  updateLayersUI();
+  updateLayerListPreview(layerRecord);
 }
 
 function rebuildLayerFeatures(layerRecord) {
@@ -3077,22 +3168,30 @@ function rebuildLayerFeatures(layerRecord) {
     opacity: layerRecord.strokeOpacity / 100,
     fillColor: layerRecord.fillColor,
     fillOpacity: layerRecord.fillOpacity / 100,
-    dashArray: dashArray
+    dashArray: dashArray,
+    renderer: DEFAULT_VECTOR_RENDERER
   };
 
   const newLayer = L.geoJSON(geojson, {
     style: function() { return pathOptions; },
     pointToLayer: function(feature, latlng) {
+      if (feature.properties && typeof feature.properties.radius === 'number') {
+        return L.circle(latlng, {
+          ...pathOptions,
+          radius: feature.properties.radius
+        });
+      }
       if (layerRecord.markerType === 'circle') {
         return L.circleMarker(latlng, {
           radius: layerRecord.markerRadius,
           color: layerRecord.color,
           fillColor: layerRecord.fillColor,
           fillOpacity: layerRecord.fillOpacity / 100,
-          weight: layerRecord.strokeWidth
+          weight: layerRecord.strokeWidth,
+          renderer: DEFAULT_VECTOR_RENDERER
         });
       } else if (layerRecord.markerType === 'icon') {
-        const iconHtml = `<i class="fa-solid ${layerRecord.markerIcon}" style="color: ${layerRecord.color}; font-size: ${layerRecord.markerIconSize}px;"></i>`;
+        const iconHtml = `<i class="fa-solid ${escapeHTML(layerRecord.markerIcon)}" style="color: ${layerRecord.color}; font-size: ${layerRecord.markerIconSize}px;"></i>`;
         const customIcon = L.divIcon({
           className: 'custom-fa-icon-marker',
           html: iconHtml,
@@ -3107,11 +3206,11 @@ function rebuildLayerFeatures(layerRecord) {
     onEachFeature: function(feature, subLayer) {
       if (feature.properties) {
         let popupContent = '<div class="popup-details">';
-        popupContent += `<div class="popup-header">${feature.properties.name || 'Feature Properties'}</div>`;
+        popupContent += `<div class="popup-header">${escapeHTML(feature.properties.name || 'Feature Properties')}</div>`;
         popupContent += '<div class="popup-body">';
         Object.keys(feature.properties).forEach(key => {
           if (key !== 'name' && key !== 'radius') {
-            popupContent += `<strong>${key}:</strong> ${feature.properties[key]}<br>`;
+            popupContent += `<strong>${escapeHTML(key)}:</strong> ${escapeHTML(formatPropertyValue(feature.properties[key]))}<br>`;
           }
         });
         popupContent += '</div></div>';
@@ -3129,7 +3228,9 @@ function rebuildLayerFeatures(layerRecord) {
     finalLayer = newLayer;
   }
 
-  finalLayer.addTo(map);
+  if (layerRecord.visible) {
+    finalLayer.addTo(map);
+  }
   layerRecord.layer = finalLayer;
 }
 
@@ -3422,10 +3523,10 @@ function handleSpatialOperation() {
           let popup = `<div class="popup-details">`;
           popup += `<div class="popup-header"><i class="fa-solid fa-clone"></i> Joined Polygon</div>`;
           popup += `<div class="popup-body">`;
-          popup += `<strong>Point Count:</strong> <span style="color: #a78bfa; font-weight:700;">${feature.properties.point_count}</span><br>`;
+          popup += `<strong>Point Count:</strong> <span style="color: #a78bfa; font-weight:700;">${escapeHTML(feature.properties.point_count)}</span><br>`;
           Object.keys(feature.properties).forEach(k => {
             if (k !== 'point_count') {
-              popup += `<strong>${k}:</strong> ${feature.properties[k]}<br>`;
+              popup += `<strong>${escapeHTML(k)}:</strong> ${escapeHTML(formatPropertyValue(feature.properties[k]))}<br>`;
             }
           });
           popup += `</div></div>`;
@@ -3732,6 +3833,8 @@ function updateAnalyticsCharts() {
   let centroidText = 'N/A';
   let intersectCount = 0;
   let unionCount = 0;
+  if (elements.kpiIntersectCount) elements.kpiIntersectCount.title = '';
+  if (elements.kpiUnionCount) elements.kpiUnionCount.title = '';
 
   if (visibleFeatures.length > 0) {
     try {
@@ -3741,38 +3844,49 @@ function updateAnalyticsCharts() {
       }
     } catch (e) {}
 
-    // Calculate intersections
-    visibleFeatures.forEach((f1, i) => {
-      let intersects = false;
-      for (let j = 0; j < visibleFeatures.length; j++) {
-        if (i !== j) {
-          try {
-            if (turf.booleanIntersects(f1, visibleFeatures[j])) {
-              intersects = true;
-              break;
-            }
-          } catch (e) {}
+    if (visibleFeatures.length <= ANALYTICS_TOPOLOGY_FEATURE_LIMIT) {
+      // Calculate intersections
+      visibleFeatures.forEach((f1, i) => {
+        let intersects = false;
+        for (let j = 0; j < visibleFeatures.length; j++) {
+          if (i !== j) {
+            try {
+              if (turf.booleanIntersects(f1, visibleFeatures[j])) {
+                intersects = true;
+                break;
+              }
+            } catch (e) {}
+          }
         }
-      }
-      if (intersects) intersectCount++;
-    });
+        if (intersects) intersectCount++;
+      });
 
-    // Calculate union count using our flattener
-    try {
-      const unioned = flattenToSinglePolygon(tempCollection);
-      if (unioned) {
-        if (unioned.geometry.type === 'MultiPolygon' || unioned.geometry.type === 'MultiPoint' || unioned.geometry.type === 'MultiLineString') {
-          unionCount = unioned.geometry.coordinates.length;
-        } else {
-          unionCount = 1;
+      // Calculate union count using our flattener
+      try {
+        const unioned = flattenToSinglePolygon(tempCollection);
+        if (unioned) {
+          if (unioned.geometry.type === 'MultiPolygon' || unioned.geometry.type === 'MultiPoint' || unioned.geometry.type === 'MultiLineString') {
+            unionCount = unioned.geometry.coordinates.length;
+          } else {
+            unionCount = 1;
+          }
         }
+      } catch (e) {}
+    } else {
+      intersectCount = 'Skipped';
+      unionCount = 'Skipped';
+      if (elements.kpiIntersectCount) {
+        elements.kpiIntersectCount.title = `Skipped for more than ${ANALYTICS_TOPOLOGY_FEATURE_LIMIT} visible features.`;
       }
-    } catch (e) {}
+      if (elements.kpiUnionCount) {
+        elements.kpiUnionCount.title = `Skipped for more than ${ANALYTICS_TOPOLOGY_FEATURE_LIMIT} visible features.`;
+      }
+    }
   }
 
   if (elements.kpiCentroid) elements.kpiCentroid.textContent = centroidText;
-  if (elements.kpiIntersectCount) elements.kpiIntersectCount.textContent = intersectCount.toLocaleString();
-  if (elements.kpiUnionCount) elements.kpiUnionCount.textContent = unionCount.toLocaleString();
+  if (elements.kpiIntersectCount) elements.kpiIntersectCount.textContent = typeof intersectCount === 'number' ? intersectCount.toLocaleString() : intersectCount;
+  if (elements.kpiUnionCount) elements.kpiUnionCount.textContent = typeof unionCount === 'number' ? unionCount.toLocaleString() : unionCount;
 
   // 3. Compute Geometry Breakdown
   const geomCounts = { Point: 0, LineString: 0, Polygon: 0, Other: 0 };
@@ -4147,6 +4261,10 @@ function createClusterGroup() {
   return L.markerClusterGroup({
     showCoverageOnHover: false,
     maxClusterRadius: 50,
+    chunkedLoading: true,
+    chunkInterval: 80,
+    chunkDelay: 20,
+    removeOutsideVisibleBounds: true,
     iconCreateFunction: function(cluster) {
       const count = cluster.getChildCount();
       let level = 'small';
@@ -4730,11 +4848,11 @@ function toggleLiveEarthquakes(e) {
             let popup = `<div class="popup-details">`;
             popup += `<div class="popup-header" style="background-color:rgba(239, 68, 68, 0.15); color:#ef4444;"><i class="fa-solid fa-house-crack"></i> Earthquake Alert</div>`;
             popup += `<div class="popup-body">`;
-            popup += `<strong>Magnitude:</strong> <span style="font-size:14px; font-weight:700; color:#ef4444;">${props.mag}</span><br>`;
-            popup += `<strong>Location:</strong> ${props.place}<br>`;
+            popup += `<strong>Magnitude:</strong> <span style="font-size:14px; font-weight:700; color:#ef4444;">${escapeHTML(props.mag)}</span><br>`;
+            popup += `<strong>Location:</strong> ${escapeHTML(props.place)}<br>`;
             popup += `<strong>Time:</strong> ${date}<br>`;
-            popup += `<strong>Depth:</strong> ${feature.geometry.coordinates[2] || 0} km<br>`;
-            popup += `<strong>Status:</strong> ${props.status}<br>`;
+            popup += `<strong>Depth:</strong> ${escapeHTML(feature.geometry.coordinates[2] || 0)} km<br>`;
+            popup += `<strong>Status:</strong> ${escapeHTML(props.status)}<br>`;
             popup += `</div></div>`;
             layer.bindPopup(popup);
           }
@@ -4887,10 +5005,10 @@ async function fetchTimezoneAndLocalTime(latlng) {
             <i class="fa-solid fa-clock"></i> Timezone & Local Time
           </div>
           <div class="popup-body" style="font-size:12px; line-height:1.6;">
-            <strong>Location:</strong> ${addressStr}<br>
-            <strong>Timezone:</strong> <code style="color:#c084fc; font-family:var(--font-mono);">${timezoneId}</code> (${offsetStr})<br>
-            <strong>Local Time:</strong> <span style="color:#a78bfa; font-weight:600;">${formattedTime}</span><br>
-            <strong>Status:</strong> ${dstStatus}<br>
+            <strong>Location:</strong> ${escapeHTML(addressStr)}<br>
+            <strong>Timezone:</strong> <code style="color:#c084fc; font-family:var(--font-mono);">${escapeHTML(timezoneId)}</code> (${escapeHTML(offsetStr)})<br>
+            <strong>Local Time:</strong> <span style="color:#a78bfa; font-weight:600;">${escapeHTML(formattedTime)}</span><br>
+            <strong>Status:</strong> ${escapeHTML(dstStatus)}<br>
             <span style="font-size:10px; color:var(--text-muted); display:block; margin-top:8px;">
               Coordinates: ${lat.toFixed(5)}, ${lng.toFixed(5)}
             </span>
@@ -4912,9 +5030,9 @@ async function fetchTimezoneAndLocalTime(latlng) {
       </div>
       <div class="popup-body" style="font-size:12px;">
         Could not resolve local timezone for these coordinates.<br><br>
-        <strong>Location:</strong> ${addressStr}<br>
-        <strong>Your Time:</strong> ${localTime}<br>
-        <strong>UTC Time:</strong> ${utcTime}<br>
+        <strong>Location:</strong> ${escapeHTML(addressStr)}<br>
+        <strong>Your Time:</strong> ${escapeHTML(localTime)}<br>
+        <strong>UTC Time:</strong> ${escapeHTML(utcTime)}<br>
         <span style="font-size:10px; color:var(--text-muted); display:block; margin-top:8px;">
           Coordinates: ${lat.toFixed(5)}, ${lng.toFixed(5)}
         </span>
