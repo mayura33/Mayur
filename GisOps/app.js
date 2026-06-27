@@ -7,27 +7,7 @@ const FEATURE_TOGGLES = {
 };
 
 const BASEMAP_TILES = {
-  cartodb_dark: {
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    options: {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      maxZoom: 20
-    }
-  },
-  cartodb_light: {
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    options: {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      maxZoom: 20
-    }
-  },
-  cartodb_voyager: {
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    options: {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      maxZoom: 20
-    }
-  },
+
   esri_satellite: {
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     options: {
@@ -76,11 +56,9 @@ let attributesChart = null; // Chart.js attribute distribution instance
 let storyFlowPathLine = null; // presentation path tracer line reference
 
 // Visual Expansion Suite State
-let activeTimelineLayerId = null;
-let timelineTimer = null;
-let timelineSliderDates = [];
+
 let elevationChart = null;
-let liveFeeds = { earthquakes: null, weather: null };
+
 let isochroneClickActive = false;
 let isochroneLayerGroup = null;
 let isTimezoneLookupActive = false;
@@ -236,19 +214,7 @@ const elements = {
   btnAnalysisHeatmap: document.getElementById('btn-analysis-heatmap'),
 
   // Visual Expansion Suite Elements
-  feedWeatherRadar: document.getElementById('feed-weather-radar'),
-  feedEarthquakes: document.getElementById('feed-earthquakes'),
   btnAnalysisIsochrone: document.getElementById('btn-analysis-isochrone'),
-  
-  timelinePlayerPanel: document.getElementById('timeline-player-panel'),
-  btnCloseTimeline: document.getElementById('btn-close-timeline'),
-  btnTimelinePlay: document.getElementById('btn-timeline-play'),
-  timelineSlider: document.getElementById('timeline-slider'),
-  timelineSpeed: document.getElementById('timeline-speed'),
-  timelineLayerName: document.getElementById('timeline-layer-name'),
-  timelineStartVal: document.getElementById('timeline-start-val'),
-  timelineCurrentVal: document.getElementById('timeline-current-val'),
-  timelineEndVal: document.getElementById('timeline-end-val'),
 
   elevationProfilePanel: document.getElementById('elevation-profile-panel'),
   btnCloseElevation: document.getElementById('btn-close-elevation'),
@@ -343,8 +309,8 @@ function initMap() {
 
   map.zoomControl.setPosition('topleft');
 
-  // Load basemap from localStorage or default to cartodb_dark
-  const storedBasemap = localStorage.getItem('geoviewer_basemap_id') || 'cartodb_dark';
+  // Load basemap from localStorage or default to osm_standard
+  const storedBasemap = localStorage.getItem('geoviewer_basemap_id') || 'osm_standard';
   setBasemap(storedBasemap);
 
   // Apply feature toggles
@@ -412,10 +378,42 @@ function initMap() {
 
     addGeometryToMap(parsedResult, layerName);
 
-    // Populate textarea with GeoJSON Representation
-    elements.geoInput.value = JSON.stringify(geojson, null, 2);
-    elements.formatSelect.value = 'geojson';
-    updateFormatDependentUI();
+    // Populate textarea with Representation based on selected format
+    let exportFormat = elements.formatSelect.value;
+    let exportText = '';
+
+    if (exportFormat === 'wkt') {
+      let geom = geojson.geometry || geojson;
+      if (elements.projectionSelect.value === '27700') {
+        try {
+          geom = reprojectGeoJSON(geom, 'EPSG:4326', 'EPSG:27700');
+        } catch(err) {}
+      }
+      try {
+          exportText = wellknown.stringify(geom);
+      } catch(err) {
+          exportText = wellknown.stringify(geojson.geometry || geojson);
+      }
+    } else if (exportFormat === 'kml') {
+      exportText = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <Placemark>
+      <name>${geojson.properties.name || 'Drawn Shape'}</name>
+      ${generateKMLGeometry(geojson.geometry)}
+    </Placemark>
+  </Document>
+</kml>`;
+    } else {
+      exportText = JSON.stringify(geojson, null, 2);
+      // Fallback to geojson if the format was something like zip/shp which we can't easily write back to
+      if (!['geojson', 'wkt', 'kml'].includes(exportFormat)) {
+         elements.formatSelect.value = 'geojson';
+         updateFormatDependentUI();
+      }
+    }
+
+    elements.geoInput.value = exportText;
 
     showValidationStatus('success', 'Shape Created', `Successfully added drawn ${geomLabel} to Active Layers.`);
   });
@@ -570,15 +568,9 @@ function initMap() {
   });
   elements.btnAnalysisHeatmap.addEventListener('click', handleSpatialHeatmap);
 
-  // Visual Expansion Suite Listeners
-  elements.feedWeatherRadar.addEventListener('change', toggleLiveWeatherRadar);
-  elements.feedEarthquakes.addEventListener('change', toggleLiveEarthquakes);
+
   elements.btnAnalysisIsochrone.addEventListener('click', toggleIsochroneMode);
   elements.btnTimezoneLookup.addEventListener('click', toggleTimezoneLookupMode);
-  
-  elements.btnCloseTimeline.addEventListener('click', closeTimelinePlayer);
-  elements.btnTimelinePlay.addEventListener('click', toggleTimelinePlayback);
-  elements.timelineSlider.addEventListener('input', handleTimelineSliderInput);
   
   elements.btnCloseElevation.addEventListener('click', closeElevationProfile);
 
@@ -599,16 +591,27 @@ function initMap() {
   });
 
   // Global Geoman drawing detection to auto-toggle timezone mode
-  map.on('pm:drawstart', () => {
+  map.on('pm:drawstart', (e) => {
     if (isTimezoneLookupActive) {
       toggleTimezoneLookupMode();
+    }
+    
+    // Feature 1: Recalculate convex hull during digitizing
+    if (e.workingLayer) {
+      const handleLiveHull = () => {
+        if (typeof updateLiveConvexHull === 'function') {
+          updateLiveConvexHull(e.workingLayer);
+        }
+      };
+      e.workingLayer.on('pm:vertexadded', handleLiveHull);
+      e.workingLayer.on('pm:change', handleLiveHull);
     }
   });
 }
 
 // Swap basemap tiles
 function setBasemap(basemapId) {
-  if (!BASEMAP_TILES[basemapId]) basemapId = 'cartodb_dark';
+  if (!BASEMAP_TILES[basemapId]) basemapId = 'osm_standard';
 
   if (currentBaseLayer) {
     map.removeLayer(currentBaseLayer);
@@ -1430,7 +1433,7 @@ function clearValidationStatus() {
 // ==========================================================================
 // LAYER MANAGEMENT & VISUALIZATION
 // ==========================================================================
-function addGeometryToMap(parsedResult, name, customColor = null) {
+function addGeometryToMap(parsedResult, name, customColor = null, skipZoom = false) {
   const colorPalette = {
     stroke: customColor || '#8b5cf6',
     fill: customColor || '#6366f1',
@@ -1496,6 +1499,38 @@ function addGeometryToMap(parsedResult, name, customColor = null) {
       
       popupContent += `</div></div>`;
       layer.bindPopup(popupContent);
+      
+      // Feature 2: Populate input geometry on click based on selected geometry
+      layer.on('click', () => {
+        let exportGeom = feature.geometry;
+        if (parsedResult.originalCRS === 'EPSG:27700') {
+          try {
+            exportGeom = reprojectGeoJSON(feature.geometry, 'EPSG:4326', 'EPSG:27700');
+          } catch(e) {
+            console.error('Error reprojecting clicked geometry:', e);
+          }
+        }
+        
+        if (elements.formatSelect.value === 'wkt') {
+          try {
+            elements.geoInput.value = wellknown.stringify(exportGeom);
+          } catch(e) {
+            console.error('Error stringifying to WKT:', e);
+          }
+        } else if (elements.formatSelect.value === 'kml') {
+          elements.geoInput.value = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <Placemark>
+      <name>${feature.properties && feature.properties.name ? feature.properties.name : 'Selected Feature'}</name>
+      ${generateKMLGeometry(exportGeom)}
+    </Placemark>
+  </Document>
+</kml>`;
+        } else {
+          elements.geoInput.value = JSON.stringify(feature, null, 2);
+        }
+      });
     }
   });
 
@@ -1530,14 +1565,34 @@ function addGeometryToMap(parsedResult, name, customColor = null) {
 
   loadedLayers.push(layerRecord);
   updateLayersUI();
-  zoomToLayer(layerRecord);
+  if (!skipZoom) {
+    zoomToLayer(layerRecord);
+  }
+}
+
+function generateKMLGeometry(geom) {
+  if (!geom || !geom.coordinates) return '';
+  if (geom.type === 'Point') {
+    return `<Point><coordinates>${geom.coordinates[0]},${geom.coordinates[1]}</coordinates></Point>`;
+  } else if (geom.type === 'LineString') {
+    return `<LineString><coordinates>${geom.coordinates.map(c => `${c[0]},${c[1]}`).join(' ')}</coordinates></LineString>`;
+  } else if (geom.type === 'Polygon') {
+    let rings = geom.coordinates.map((ring, idx) => {
+      let coords = ring.map(c => `${c[0]},${c[1]}`).join(' ');
+      if (idx === 0) return `<outerBoundaryIs><LinearRing><coordinates>${coords}</coordinates></LinearRing></outerBoundaryIs>`;
+      return `<innerBoundaryIs><LinearRing><coordinates>${coords}</coordinates></LinearRing></innerBoundaryIs>`;
+    }).join('\n      ');
+    return `<Polygon>\n      ${rings}\n      </Polygon>`;
+  } else {
+    return '';
+  }
 }
 
 function zoomToLayer(layerRecord) {
   try {
     const bounds = layerRecord.layer.getBounds();
     if (bounds && bounds.isValid()) {
-      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: Math.max(map.getZoom(), 18) });
     }
   } catch (e) {
     const layers = layerRecord.layer.getLayers();
@@ -1848,7 +1903,7 @@ function updateLayersUI({ updateHull = true } = {}) {
           <div class="layer-options-dropdown hidden">
             <button class="dropdown-item btn-analytics"><i class="fa-solid fa-chart-simple"></i> Viewport Analytics</button>
             <button class="dropdown-item btn-table"><i class="fa-solid fa-table"></i> Attribute Table</button>
-            <button class="dropdown-item btn-timeline"><i class="fa-solid fa-clock"></i> Timeline Player</button>
+
             <button class="dropdown-item btn-elevation"><i class="fa-solid fa-mountain-sun"></i> Elevation Profile</button>
             <button class="dropdown-item btn-style"><i class="fa-solid fa-palette"></i> Edit Styling</button>
             <button class="dropdown-item btn-edit ${l.editing ? 'active' : ''}"><i class="fa-solid ${l.editing ? 'fa-square-check' : 'fa-pen-to-square'}"></i> ${l.editing ? 'Save Shapes' : 'Edit Shapes'}</button>
@@ -1871,7 +1926,7 @@ function updateLayersUI({ updateHull = true } = {}) {
     if (supportsLayerOptions) {
       li.querySelector('.btn-analytics').addEventListener('click', () => openAnalyticsDashboard(l.id));
       li.querySelector('.btn-table').addEventListener('click', () => loadLayerTable(l.id));
-      li.querySelector('.btn-timeline').addEventListener('click', () => openTimelinePlayer(l.id));
+
       li.querySelector('.btn-elevation').addEventListener('click', () => openElevationProfile(l.id));
       li.querySelector('.btn-style').addEventListener('click', () => openStyleEditor(l.id));
       li.querySelector('.btn-edit').addEventListener('click', () => toggleLayerEdit(l.id));
@@ -2075,7 +2130,7 @@ function handleSpatialEnvelope() {
   }
 }
 
-function updateLiveConvexHull() {
+function updateLiveConvexHull(workingLayer = null) {
   if (!FEATURE_TOGGLES.autoConvexHull) {
     if (liveConvexHullLayer) {
       map.removeLayer(liveConvexHullLayer);
@@ -2107,6 +2162,25 @@ function updateLiveConvexHull() {
       }
     }
   });
+
+  // Include the working layer currently being digitized, if any
+  if (workingLayer) {
+    try {
+      let geojson;
+      if (workingLayer instanceof L.Circle) {
+         const radius = workingLayer.getRadius();
+         const center = workingLayer.getLatLng();
+         geojson = turf.circle([center.lng, center.lat], radius, { steps: 32, units: 'meters' });
+      } else {
+         geojson = workingLayer.toGeoJSON();
+      }
+      turf.featureEach(geojson, (f) => {
+          if (f.geometry) allFeatures.push(f);
+      });
+    } catch(err) {
+      // Ignore conversion errors for working layers without enough points
+    }
+  }
 
   if (allFeatures.length === 0) {
     if (liveConvexHullLayer) {
@@ -2309,7 +2383,7 @@ function zoomToSublayer(subLayer) {
     if (subLayer.getBounds) {
       const bounds = subLayer.getBounds();
       if (bounds && bounds.isValid()) {
-        map.fitBounds(bounds, { padding: [100, 100], maxZoom: 16 });
+        map.fitBounds(bounds, { padding: [100, 100], maxZoom: Math.max(map.getZoom(), 18) });
       }
     } else if (subLayer.getLatLng) {
       map.setView(subLayer.getLatLng(), 16);
@@ -4279,174 +4353,6 @@ function createClusterGroup() {
   });
 }
 
-// 1. TEMPORAL TIMELINE PLAYER DRAWERS
-function openTimelinePlayer(layerId) {
-  const record = loadedLayers.find(l => l.id === layerId);
-  if (!record) return;
-  
-  let timeKey = null;
-  const uniqueTimes = new Set();
-  
-  record.layer.eachLayer(sub => {
-    if (sub.feature && sub.feature.properties) {
-      const keys = Object.keys(sub.feature.properties);
-      const found = keys.find(k => ['date', 'time', 'timestamp', 'year', 'datetime', 'created_at'].includes(k.toLowerCase()));
-      if (found) {
-        timeKey = found;
-        const val = sub.feature.properties[found];
-        if (val !== undefined && val !== null) {
-          uniqueTimes.add(val);
-        }
-      }
-    }
-  });
-  
-  if (!timeKey || uniqueTimes.size === 0) {
-    showValidationStatus('error', 'Timeline Failed', `No temporal fields (date, time, year, etc.) found in layer "${record.name}".`);
-    return;
-  }
-  
-  // Sort times chronologically
-  timelineSliderDates = Array.from(uniqueTimes).sort((a, b) => {
-    const da = new Date(a).getTime() || parseFloat(a) || 0;
-    const db = new Date(b).getTime() || parseFloat(b) || 0;
-    return da - db;
-  });
-  
-  activeTimelineLayerId = layerId;
-  elements.timelineLayerName.textContent = record.name;
-  elements.timelineStartVal.textContent = timelineSliderDates[0];
-  elements.timelineEndVal.textContent = timelineSliderDates[timelineSliderDates.length - 1];
-  
-  elements.timelineSlider.disabled = false;
-  elements.timelineSlider.min = 0;
-  elements.timelineSlider.max = timelineSliderDates.length - 1;
-  elements.timelineSlider.value = 0;
-  
-  // Collapse other panels
-  elements.attributeTablePanel.classList.add('collapsed');
-  elements.attributeTablePanel.classList.remove('expanded');
-  elements.elevationProfilePanel.classList.add('collapsed');
-  elements.elevationProfilePanel.classList.remove('expanded');
-  
-  // Show timeline player
-  elements.timelinePlayerPanel.classList.remove('collapsed');
-  elements.timelinePlayerPanel.classList.add('expanded');
-  
-  // Render initial timeline tick
-  elements.timelineCurrentVal.textContent = timelineSliderDates[0];
-  filterLayerByTime(record, timelineSliderDates[0], timeKey);
-}
-
-function closeTimelinePlayer() {
-  if (timelineTimer) {
-    clearInterval(timelineTimer);
-    timelineTimer = null;
-  }
-  elements.btnTimelinePlay.innerHTML = '<i class="fa-solid fa-play"></i> Play';
-  elements.timelinePlayerPanel.classList.remove('expanded');
-  elements.timelinePlayerPanel.classList.add('collapsed');
-  
-  // Restore full opacity on features
-  if (activeTimelineLayerId) {
-    const record = loadedLayers.find(l => l.id === activeTimelineLayerId);
-    if (record) {
-      record.layer.eachLayer(sub => {
-        if (sub.setStyle) {
-          sub.setStyle({
-            opacity: record.strokeOpacity ? record.strokeOpacity / 100 : 0.85,
-            fillOpacity: record.fillOpacity ? record.fillOpacity / 100 : 0.15
-          });
-        }
-        if (sub instanceof L.Marker && !(sub instanceof L.CircleMarker)) {
-          sub.setOpacity(1);
-        }
-      });
-    }
-  }
-  activeTimelineLayerId = null;
-}
-
-function toggleTimelinePlayback() {
-  const btn = elements.btnTimelinePlay;
-  
-  if (timelineTimer) {
-    clearInterval(timelineTimer);
-    timelineTimer = null;
-    btn.innerHTML = '<i class="fa-solid fa-play"></i> Play';
-  } else {
-    btn.innerHTML = '<i class="fa-solid fa-pause"></i> Pause';
-    const record = loadedLayers.find(l => l.id === activeTimelineLayerId);
-    if (!record) return;
-    
-    let timeKey = null;
-    record.layer.eachLayer(sub => {
-      if (sub.feature && sub.feature.properties) {
-        const keys = Object.keys(sub.feature.properties);
-        const found = keys.find(k => ['date', 'time', 'timestamp', 'year', 'datetime', 'created_at'].includes(k.toLowerCase()));
-        if (found) timeKey = found;
-      }
-    });
-    
-    const slider = elements.timelineSlider;
-    const speed = parseInt(elements.timelineSpeed.value) || 500;
-    
-    timelineTimer = setInterval(() => {
-      let val = parseInt(slider.value);
-      val++;
-      if (val >= timelineSliderDates.length) {
-        val = 0; // Loop timeline
-      }
-      slider.value = val;
-      
-      const currentTimeVal = timelineSliderDates[val];
-      elements.timelineCurrentVal.textContent = currentTimeVal;
-      filterLayerByTime(record, currentTimeVal, timeKey);
-    }, speed);
-  }
-}
-
-function handleTimelineSliderInput() {
-  const index = parseInt(elements.timelineSlider.value);
-  const currentTimeVal = timelineSliderDates[index];
-  elements.timelineCurrentVal.textContent = currentTimeVal;
-  
-  const record = loadedLayers.find(l => l.id === activeTimelineLayerId);
-  if (!record) return;
-  
-  let timeKey = null;
-  record.layer.eachLayer(sub => {
-    if (sub.feature && sub.feature.properties) {
-      const keys = Object.keys(sub.feature.properties);
-      const found = keys.find(k => ['date', 'time', 'timestamp', 'year', 'datetime', 'created_at'].includes(k.toLowerCase()));
-      if (found) timeKey = found;
-    }
-  });
-  
-  filterLayerByTime(record, currentTimeVal, timeKey);
-}
-
-function filterLayerByTime(record, currentTimeVal, timeKey) {
-  const targetTime = new Date(currentTimeVal).getTime() || parseFloat(currentTimeVal) || 0;
-  
-  record.layer.eachLayer(sub => {
-    if (sub.feature && sub.feature.properties) {
-      const val = sub.feature.properties[timeKey];
-      const featureTime = new Date(val).getTime() || parseFloat(val) || 0;
-      const show = featureTime <= targetTime;
-      
-      if (sub.setStyle) {
-        sub.setStyle({
-          opacity: show ? (record.strokeOpacity ? record.strokeOpacity / 100 : 0.85) : 0,
-          fillOpacity: show ? (record.fillOpacity ? record.fillOpacity / 100 : 0.15) : 0
-        });
-      }
-      if (sub instanceof L.Marker && !(sub instanceof L.CircleMarker)) {
-        sub.setOpacity(show ? 1 : 0);
-      }
-    }
-  });
-}
 
 // 2. LIVE ELEVATION PROFILE DRAWER
 function openElevationProfile(layerId) {
@@ -4762,115 +4668,6 @@ function generateIsochroneContours(latlng) {
   }
 }
 
-// 4. LIVE WEATHER RADAR & EARTHQUAKES WMS FEEDS
-function toggleLiveWeatherRadar(e) {
-  const active = e.target.checked;
-  
-  if (active) {
-    showValidationStatus('warning', 'Connecting Weather Service...', 'Retrieving recent radar scan configuration...');
-    
-    const configUrl = 'https://api.rainviewer.com/public/weather-maps.json';
-    
-    fetch(configUrl)
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.radar && Array.isArray(data.radar.past)) {
-          const pastFrames = data.radar.past;
-          const latestFrame = pastFrames[pastFrames.length - 1];
-          const path = latestFrame.path;
-          
-          if (liveFeeds.weather) {
-            map.removeLayer(liveFeeds.weather);
-          }
-          
-          const tileUrl = `https://tilecache.rainviewer.com${path}/256/{z}/{x}/{y}/2/1_1.png`;
-          
-          liveFeeds.weather = L.tileLayer(tileUrl, {
-            opacity: 0.65,
-            attribution: '&copy; <a href="https://www.rainviewer.com/api.html">RainViewer</a> weather radar data',
-            zIndex: 300
-          }).addTo(map);
-          
-          const timeString = new Date(latestFrame.time * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          showValidationStatus('success', 'Radar Connected', `Displaying precipitation radar (scan time: ${timeString}).`);
-        } else {
-          throw new Error("Invalid radar API configuration");
-        }
-      })
-      .catch(err => {
-        showValidationStatus('error', 'Weather Service Error', `Could not connect to RainViewer cache: ${err.message}`);
-        e.target.checked = false;
-      });
-  } else {
-    if (liveFeeds.weather) {
-      map.removeLayer(liveFeeds.weather);
-      liveFeeds.weather = null;
-    }
-  }
-}
-
-function toggleLiveEarthquakes(e) {
-  const active = e.target.checked;
-  
-  if (active) {
-    showValidationStatus('warning', 'Loading Earthquakes Feed...', 'Fetching recent global earthquake data from USGS...');
-    
-    const url = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson';
-    
-    fetch(url)
-      .then(res => res.json())
-      .then(geojson => {
-        if (liveFeeds.earthquakes) {
-          map.removeLayer(liveFeeds.earthquakes);
-        }
-        
-        liveFeeds.earthquakes = L.geoJSON(geojson, {
-          pointToLayer: function(feature, latlng) {
-            const mag = feature.properties.mag || 1.0;
-            const radius = Math.max(5, Math.min(25, mag * 3.5));
-            let color = '#10b981';
-            if (mag >= 4.5) color = '#ef4444';
-            else if (mag >= 2.5) color = '#f59e0b';
-            
-            return L.circleMarker(latlng, {
-              radius: radius,
-              color: color,
-              weight: 1.5,
-              opacity: 0.9,
-              fillColor: color,
-              fillOpacity: 0.5,
-              className: 'eq-pulsing-marker'
-            });
-          },
-          onEachFeature: function(feature, layer) {
-            const props = feature.properties || {};
-            const date = new Date(props.time).toLocaleString();
-            let popup = `<div class="popup-details">`;
-            popup += `<div class="popup-header" style="background-color:rgba(239, 68, 68, 0.15); color:#ef4444;"><i class="fa-solid fa-house-crack"></i> Earthquake Alert</div>`;
-            popup += `<div class="popup-body">`;
-            popup += `<strong>Magnitude:</strong> <span style="font-size:14px; font-weight:700; color:#ef4444;">${escapeHTML(props.mag)}</span><br>`;
-            popup += `<strong>Location:</strong> ${escapeHTML(props.place)}<br>`;
-            popup += `<strong>Time:</strong> ${date}<br>`;
-            popup += `<strong>Depth:</strong> ${escapeHTML(feature.geometry.coordinates[2] || 0)} km<br>`;
-            popup += `<strong>Status:</strong> ${escapeHTML(props.status)}<br>`;
-            popup += `</div></div>`;
-            layer.bindPopup(popup);
-          }
-        }).addTo(map);
-        
-        showValidationStatus('success', 'USGS Feed Connected', `Successfully plotted ${geojson.features.length} recent earthquake coordinates.`);
-      })
-      .catch(err => {
-        showValidationStatus('error', 'Feed Connection Failed', `Error connecting to USGS service: ${err.message}`);
-        e.target.checked = false;
-      });
-  } else {
-    if (liveFeeds.earthquakes) {
-      map.removeLayer(liveFeeds.earthquakes);
-      liveFeeds.earthquakes = null;
-    }
-  }
-}
 
 // 5. COORDINATE TIMEZONE & LOCAL TIME LOOKUP
 function toggleTimezoneLookupMode() {

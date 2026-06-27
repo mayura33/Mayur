@@ -391,27 +391,7 @@
           <i class="fa-solid fa-images"></i> Map Styles
         </button>
         <div class="basemap-options-dropdown hidden" id="basemap-dropdown">
-          <div class="basemap-option-card active" data-basemap="cartodb_dark">
-            <div class="basemap-thumbnail dark-thumb"></div>
-            <div class="basemap-info">
-              <span class="basemap-name">Dark Matter</span>
-              <span class="basemap-desc">CartoDB Dark Theme</span>
-            </div>
-          </div>
-          <div class="basemap-option-card" data-basemap="cartodb_light">
-            <div class="basemap-thumbnail light-thumb"></div>
-            <div class="basemap-info">
-              <span class="basemap-name">Positron</span>
-              <span class="basemap-desc">CartoDB Light Theme</span>
-            </div>
-          </div>
-          <div class="basemap-option-card" data-basemap="cartodb_voyager">
-            <div class="basemap-thumbnail voyager-thumb"></div>
-            <div class="basemap-info">
-              <span class="basemap-name">Voyager</span>
-              <span class="basemap-desc">CartoDB Colored Theme</span>
-            </div>
-          </div>
+
           <div class="basemap-option-card" data-basemap="esri_satellite">
             <div class="basemap-thumbnail satellite-thumb"></div>
             <div class="basemap-info">
@@ -419,7 +399,7 @@
               <span class="basemap-desc">ESRI World Imagery</span>
             </div>
           </div>
-          <div class="basemap-option-card" data-basemap="osm_standard">
+          <div class="basemap-option-card active" data-basemap="osm_standard">
             <div class="basemap-thumbnail osm-thumb"></div>
             <div class="basemap-info">
               <span class="basemap-name">OpenStreetMap</span>
@@ -566,42 +546,6 @@
           <div class="table-empty-state">
             <i class="fa-solid fa-table-list"></i>
             <p>Select a layer and click its table action, or load a dataset with properties.</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Collapsible Timeline Player Drawer -->
-      <div class="attribute-table-panel collapsed" id="timeline-player-panel" style="z-index: 1090;">
-        <header class="table-header" id="timeline-header">
-          <div class="table-title">
-            <i class="fa-solid fa-clock"></i> Temporal Playback Timeline: <span id="timeline-layer-name">None Selected</span>
-          </div>
-          <div class="table-header-actions">
-            <button id="btn-close-timeline" class="table-header-btn" title="Close Timeline" aria-label="Close Timeline">
-              <i class="fa-solid fa-xmark"></i> Close
-            </button>
-          </div>
-        </header>
-        
-        <div class="timeline-controls-row" style="padding: 12px 16px; display: flex; align-items: center; gap: 16px; background-color: rgba(9, 13, 22, 0.4);">
-          <button id="btn-timeline-play" class="btn btn-primary" style="padding: 6px 16px; min-width: 90px; display: flex; align-items: center; gap: 8px;">
-            <i class="fa-solid fa-play"></i> Play
-          </button>
-          <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 4px;">
-            <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted);">
-              <span id="timeline-start-val">-</span>
-              <span id="timeline-current-val" style="color: #a78bfa; font-weight: 600;">-</span>
-              <span id="timeline-end-val">-</span>
-            </div>
-            <input type="range" id="timeline-slider" min="0" max="100" value="0" style="width: 100%; cursor: pointer;" disabled />
-          </div>
-          <div style="display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-muted);">
-            <label for="timeline-speed">Speed:</label>
-            <select id="timeline-speed" class="custom-select" style="padding: 4px; font-size: 11px; width: 70px;">
-              <option value="1000">Slow</option>
-              <option value="500" selected>Normal</option>
-              <option value="200">Fast</option>
-            </select>
           </div>
         </div>
       </div>
