@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Sheets - CSV Column Extractor (A, Y, L, C, R)</title>
+    <title>Google Sheets - CSV Column Extractor (A, Y, L, C, R, AH)</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- JSZip for handling ZIP files -->
@@ -121,7 +121,7 @@
                 <div>
                     <div class="flex items-center space-x-2">
                         <h1 class="text-base font-semibold text-gray-800 leading-tight">Google Sheets - CSV Extractor</h1>
-                        <span class="bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded font-medium border border-green-300">Columns A, Y, L, C, R</span>
+                        <span class="bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded font-medium border border-green-300">Columns A, Y, L, C, R, AH</span>
                     </div>
                     <!-- Menu strip -->
                     <div class="flex space-x-3 text-xs text-gray-600 mt-0.5">
@@ -173,7 +173,7 @@
 
         <div class="h-4 w-px bg-gray-300"></div>
 
-        <!-- Target Columns Badge & Quick Copy Buttons -->
+        <!-- Target Columns Badge -->
         <div class="flex items-center space-x-1">
             <span class="text-gray-500 font-medium">Extracted Columns:</span>
             <span class="bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded">A</span>
@@ -181,6 +181,7 @@
             <span class="bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded">L</span>
             <span class="bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded">C</span>
             <span class="bg-rose-100 text-rose-800 font-bold px-1.5 py-0.5 rounded">R</span>
+            <span class="bg-cyan-100 text-cyan-800 font-bold px-1.5 py-0.5 rounded">AH</span>
         </div>
     </div>
 
@@ -202,7 +203,7 @@
 
                 <h2 class="text-xl font-bold text-gray-800 mb-1">Upload CSV or ZIP File</h2>
                 <p class="text-sm text-gray-500 max-w-md mb-6">
-                    Drag and drop your <span class="font-semibold text-gray-700">.csv</span> or <span class="font-semibold text-gray-700">.zip</span> archive (containing a single CSV file) to extract columns <span class="font-bold text-gsheet-green">A, Y, L, C, R</span> into Google Sheet format.
+                    Drag and drop your <span class="font-semibold text-gray-700">.csv</span> or <span class="font-semibold text-gray-700">.zip</span> archive (containing a single CSV file) to extract columns <span class="font-bold text-gsheet-green">A, Y, L, C, R, AH</span> into Google Sheet format.
                 </p>
 
                 <div class="flex flex-wrap gap-3 justify-center mb-6">
@@ -214,12 +215,13 @@
                     </button>
                 </div>
 
-                <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs text-gray-500 pt-4 border-t border-gray-100 w-full">
-                    <div class="bg-gray-50 p-2 rounded border border-gray-200 text-center"><strong class="text-blue-600 block">Col A</strong> 1st Col / Header A</div>
-                    <div class="bg-gray-50 p-2 rounded border border-gray-200 text-center"><strong class="text-purple-600 block">Col Y</strong> 25th Col / Header Y</div>
-                    <div class="bg-gray-50 p-2 rounded border border-gray-200 text-center"><strong class="text-amber-600 block">Col L</strong> 12th Col / Header L</div>
-                    <div class="bg-gray-50 p-2 rounded border border-gray-200 text-center"><strong class="text-emerald-600 block">Col C</strong> 3rd Col / Header C</div>
-                    <div class="bg-gray-50 p-2 rounded border border-gray-200 text-center"><strong class="text-rose-600 block">Col R</strong> 18th Col / Header R</div>
+                <div class="grid grid-cols-2 sm:grid-cols-6 gap-2 text-xs text-gray-500 pt-4 border-t border-gray-100 w-full">
+                    <div class="bg-gray-50 p-2 rounded border border-gray-200 text-center"><strong class="text-blue-600 block">Col A</strong> 1st Col / A</div>
+                    <div class="bg-gray-50 p-2 rounded border border-gray-200 text-center"><strong class="text-purple-600 block">Col Y</strong> 25th Col / Y</div>
+                    <div class="bg-gray-50 p-2 rounded border border-gray-200 text-center"><strong class="text-amber-600 block">Col L</strong> 12th Col / L</div>
+                    <div class="bg-gray-50 p-2 rounded border border-gray-200 text-center"><strong class="text-emerald-600 block">Col C</strong> 3rd Col / C</div>
+                    <div class="bg-gray-50 p-2 rounded border border-gray-200 text-center"><strong class="text-rose-600 block">Col R</strong> 18th Col / R</div>
+                    <div class="bg-gray-50 p-2 rounded border border-gray-200 text-center"><strong class="text-cyan-600 block">Col AH</strong> 34th Col / AH</div>
                 </div>
             </div>
 
@@ -239,7 +241,7 @@
                     <span class="font-semibold text-emerald-900 flex items-center">
                         <i class="fa-solid fa-table-columns text-emerald-600 mr-1.5"></i> Column Mapping Active:
                     </span>
-                    <div id="mapping-summary-tags" class="flex items-center space-x-2">
+                    <div id="mapping-summary-tags" class="flex items-center space-x-2 flex-wrap gap-y-1">
                         <!-- Populated by JS -->
                     </div>
                 </div>
@@ -311,6 +313,17 @@
                                     </div>
                                 </div>
                             </th>
+                            <th class="cursor-pointer hover:bg-gray-200 px-3 py-2 text-left" onclick="sortTable('AH')">
+                                <div class="flex items-center justify-between">
+                                    <span><span class="text-cyan-600 font-bold">AH</span> <span id="header-name-AH" class="text-gray-500 font-normal"></span></span>
+                                    <div class="flex items-center space-x-1">
+                                        <button onclick="event.stopPropagation(); copyToClipboard('col', 'AH')" title="Copy Column AH values" class="text-gray-400 hover:text-cyan-600 p-0.5">
+                                            <i class="fa-regular fa-copy"></i>
+                                        </button>
+                                        <i id="sort-icon-AH" class="fa-solid fa-sort text-gray-400"></i>
+                                    </div>
+                                </div>
+                            </th>
                         </tr>
                     </thead>
                     <tbody id="sheet-body">
@@ -364,7 +377,7 @@
             <div class="bg-gray-100 border-t border-gray-300 px-4 py-1 flex items-center justify-between text-xs text-gray-500">
                 <div class="flex items-center space-x-1">
                     <div class="bg-white border-t-2 border-gsheet-green border-x border-gray-300 px-3 py-1 font-semibold text-gsheet-green flex items-center rounded-t">
-                        <i class="fa-solid fa-sheet-plastic mr-1.5"></i> Extracted (A, Y, L, C, R)
+                        <i class="fa-solid fa-sheet-plastic mr-1.5"></i> Extracted (A, Y, L, C, R, AH)
                     </div>
                 </div>
                 <div id="stats-summary" class="flex items-center space-x-4 font-mono text-gray-600 bg-white px-3 py-0.5 rounded border border-gray-200">
@@ -389,7 +402,7 @@
             </div>
             
             <p class="text-xs text-gray-500 mb-4">
-                Map source CSV headers to the 5 output Google Sheet columns (<strong class="text-gray-700">A, Y, L, C, R</strong>).
+                Map source CSV headers to the 6 output Google Sheet columns (<strong class="text-gray-700">A, Y, L, C, R, AH</strong>).
             </p>
 
             <div class="space-y-3 mb-6" id="mapping-selectors-container">
@@ -408,17 +421,21 @@
         // Global Application State
         let rawHeaders = [];
         let rawRows = [];
-        let extractedData = []; // Array of objects with keys: A, Y, L, C, R
+        let extractedData = []; // Array of objects with keys: A, Y, L, C, R, AH
         let filteredData = [];
         let currentSort = { column: null, direction: 'asc' };
         
+        // Target Columns List
+        const TARGET_COLUMNS = ['A', 'Y', 'L', 'C', 'R', 'AH'];
+
         // Active Column Map (Target -> Source Index or Name)
         let columnMapping = {
             A: { label: 'Column A', sourceIndex: 0, headerName: '' },
             Y: { label: 'Column Y', sourceIndex: 24, headerName: '' },
             L: { label: 'Column L', sourceIndex: 11, headerName: '' },
             C: { label: 'Column C', sourceIndex: 2, headerName: '' },
-            R: { label: 'Column R', sourceIndex: 17, headerName: '' }
+            R: { label: 'Column R', sourceIndex: 17, headerName: '' },
+            AH: { label: 'Column AH', sourceIndex: 33, headerName: '' }
         };
 
         // Pagination State
@@ -524,7 +541,7 @@
                     // Auto Detect / Setup default mapping
                     autoDetectColumnMapping();
 
-                    // Process dataset to extract A, Y, L, C, R
+                    // Process dataset to extract A, Y, L, C, R, AH
                     extractMappedData();
 
                     // Update UI
@@ -546,22 +563,23 @@
             });
         }
 
-        // AUTO DETECT SOURCE COLUMNS FOR A, Y, L, C, R
+        // AUTO DETECT SOURCE COLUMNS FOR A, Y, L, C, R, AH
         function autoDetectColumnMapping() {
-            // Target keys: A, Y, L, C, R
+            // Target keys: A (idx 0), Y (idx 24), L (idx 11), C (idx 2), R (idx 17), AH (idx 33)
             const targets = [
                 { key: 'A', defaultIdx: 0, letter: 'A' },
                 { key: 'Y', defaultIdx: 24, letter: 'Y' },
                 { key: 'L', defaultIdx: 11, letter: 'L' },
                 { key: 'C', defaultIdx: 2, letter: 'C' },
-                { key: 'R', defaultIdx: 17, letter: 'R' }
+                { key: 'R', defaultIdx: 17, letter: 'R' },
+                { key: 'AH', defaultIdx: 33, letter: 'AH' }
             ];
 
             targets.forEach(target => {
                 let foundIdx = -1;
                 let foundName = '';
 
-                // 1. Exact or matching header name search (e.g. Header named "A", "Column A", "Status Y", etc.)
+                // 1. Exact or matching header name search (e.g. Header named "A", "AH", "Column AH", etc.)
                 const matchHeaderIdx = rawHeaders.findIndex(h => {
                     const norm = h.toUpperCase().trim();
                     return norm === target.letter || norm === `COLUMN ${target.letter}` || norm === `COL ${target.letter}`;
@@ -571,12 +589,12 @@
                     foundIdx = matchHeaderIdx;
                     foundName = rawHeaders[matchHeaderIdx];
                 } else if (target.defaultIdx < rawHeaders.length) {
-                    // 2. Positional fallback (Col 1 = 0, Col 25 = 24, Col 12 = 11, Col 3 = 2, Col 18 = 17)
+                    // 2. Positional fallback
                     foundIdx = target.defaultIdx;
                     foundName = rawHeaders[target.defaultIdx] || `Col #${target.defaultIdx + 1}`;
                 } else {
                     // 3. Fallback to index if within bounds or -1
-                    foundIdx = Math.min(target.defaultIdx, rawHeaders.length - 1);
+                    foundIdx = Math.min(target.defaultIdx, Math.max(0, rawHeaders.length - 1));
                     foundName = rawHeaders[foundIdx] || `Col #${foundIdx + 1}`;
                 }
 
@@ -590,7 +608,7 @@
             updateMappingSummaryUI();
         }
 
-        // EXTRACT A, Y, L, C, R COLUMNS FROM RAW ROWS
+        // EXTRACT A, Y, L, C, R, AH COLUMNS FROM RAW ROWS
         function extractMappedData() {
             extractedData = rawRows.map(row => {
                 return {
@@ -598,7 +616,8 @@
                     Y: getCellValue(row, columnMapping.Y.sourceIndex),
                     L: getCellValue(row, columnMapping.L.sourceIndex),
                     C: getCellValue(row, columnMapping.C.sourceIndex),
-                    R: getCellValue(row, columnMapping.R.sourceIndex)
+                    R: getCellValue(row, columnMapping.R.sourceIndex),
+                    AH: getCellValue(row, columnMapping.AH.sourceIndex)
                 };
             });
 
@@ -619,9 +638,10 @@
             tbody.innerHTML = '';
 
             // Update column headers info
-            ['A', 'Y', 'L', 'C', 'R'].forEach(col => {
+            TARGET_COLUMNS.forEach(col => {
                 const hName = columnMapping[col].headerName;
-                document.getElementById(`header-name-${col}`).textContent = hName ? `(${hName})` : '';
+                const el = document.getElementById(`header-name-${col}`);
+                if (el) el.textContent = hName ? `(${hName})` : '';
             });
 
             const total = filteredData.length;
@@ -642,7 +662,7 @@
             if (pageData.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="6" class="text-center py-12 text-gray-400">
+                        <td colspan="7" class="text-center py-12 text-gray-400">
                             <i class="fa-solid fa-folder-open text-3xl mb-2 block"></i>
                             No matching records found.
                         </td>
@@ -663,8 +683,8 @@
                 thRow.textContent = rowIndex;
                 tr.appendChild(thRow);
 
-                // Columns A, Y, L, C, R
-                ['A', 'Y', 'L', 'C', 'R'].forEach(colKey => {
+                // Columns A, Y, L, C, R, AH
+                TARGET_COLUMNS.forEach(colKey => {
                     const td = document.createElement('td');
                     const val = rowObj[colKey];
                     td.textContent = val;
@@ -703,11 +723,7 @@
                 filteredData = [...extractedData];
             } else {
                 filteredData = extractedData.filter(row => {
-                    return (row.A && row.A.toLowerCase().includes(query)) ||
-                           (row.Y && row.Y.toLowerCase().includes(query)) ||
-                           (row.L && row.L.toLowerCase().includes(query)) ||
-                           (row.C && row.C.toLowerCase().includes(query)) ||
-                           (row.R && row.R.toLowerCase().includes(query));
+                    return TARGET_COLUMNS.some(k => row[k] && row[k].toLowerCase().includes(query));
                 });
             }
             currentPage = 1;
@@ -724,12 +740,14 @@
             }
 
             // Reset icons
-            ['A', 'Y', 'L', 'C', 'R'].forEach(k => {
+            TARGET_COLUMNS.forEach(k => {
                 const icon = document.getElementById(`sort-icon-${k}`);
-                if (k === colKey) {
-                    icon.className = currentSort.direction === 'asc' ? 'fa-solid fa-sort-up text-gsheet-green ml-1' : 'fa-solid fa-sort-down text-gsheet-green ml-1';
-                } else {
-                    icon.className = 'fa-solid fa-sort text-gray-400 ml-1';
+                if (icon) {
+                    if (k === colKey) {
+                        icon.className = currentSort.direction === 'asc' ? 'fa-solid fa-sort-up text-gsheet-green' : 'fa-solid fa-sort-down text-gsheet-green';
+                    } else {
+                        icon.className = 'fa-solid fa-sort text-gray-400';
+                    }
                 }
             });
 
@@ -754,14 +772,14 @@
             renderSheetData();
         }
 
-        // CALCULATE SUMMARY STATS FOR COLUMN R & NUMERIC DATA
+        // CALCULATE SUMMARY STATS FOR NUMERIC DATA
         function calculateStatistics() {
             let count = filteredData.length;
             let sum = 0;
             let numericCount = 0;
 
             filteredData.forEach(row => {
-                const val = parseFloat(row.R || row.C || row.A);
+                const val = parseFloat(row.R || row.C || row.A || row.AH);
                 if (!isNaN(val)) {
                     sum += val;
                     numericCount++;
@@ -802,11 +820,11 @@
                 textContent = [header, ...rows].join('\n');
                 msg = `Copied Column ${specificCol} (${filteredData.length.toLocaleString()} rows) to clipboard!`;
             } else {
-                // Copy all 5 columns (A, Y, L, C, R) formatted with Tabs for Excel/Sheets pasting
-                const headers = ['A', 'Y', 'L', 'C', 'R'].join('\t');
-                const rows = filteredData.map(r => [r.A, r.Y, r.L, r.C, r.R].join('\t')).join('\n');
+                // Copy all 6 columns (A, Y, L, C, R, AH) formatted with Tabs for Excel/Sheets pasting
+                const headers = TARGET_COLUMNS.join('\t');
+                const rows = filteredData.map(r => TARGET_COLUMNS.map(k => r[k]).join('\t')).join('\n');
                 textContent = `${headers}\n${rows}`;
-                msg = `Copied ${filteredData.length.toLocaleString()} rows (A, Y, L, C, R) to clipboard!`;
+                msg = `Copied ${filteredData.length.toLocaleString()} rows (A, Y, L, C, R, AH) to clipboard!`;
             }
 
             try {
@@ -856,19 +874,19 @@
                 return;
             }
 
-            const exportHeaders = ['A', 'Y', 'L', 'C', 'R'];
-            const rows = filteredData.map(row => [row.A, row.Y, row.L, row.C, row.R]);
+            const exportHeaders = TARGET_COLUMNS;
+            const rows = filteredData.map(row => TARGET_COLUMNS.map(k => row[k]));
 
             if (format === 'csv') {
                 const csvData = [exportHeaders, ...rows];
                 const csvString = Papa.unparse(csvData);
-                downloadBlob(csvString, 'GoogleSheet_Populated_A_Y_L_C_R.csv', 'text/csv;charset=utf-8;');
+                downloadBlob(csvString, 'GoogleSheet_Populated_A_Y_L_C_R_AH.csv', 'text/csv;charset=utf-8;');
             } else if (format === 'xlsx') {
                 const worksheetData = [exportHeaders, ...rows];
                 const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
                 const workbook = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(workbook, worksheet, "Extracted Data");
-                XLSX.writeFile(workbook, 'GoogleSheet_Populated_A_Y_L_C_R.xlsx');
+                XLSX.writeFile(workbook, 'GoogleSheet_Populated_A_Y_L_C_R_AH.xlsx');
             }
         }
 
@@ -894,7 +912,7 @@
             const container = document.getElementById('mapping-selectors-container');
             container.innerHTML = '';
 
-            ['A', 'Y', 'L', 'C', 'R'].forEach(colKey => {
+            TARGET_COLUMNS.forEach(colKey => {
                 const currentIdx = columnMapping[colKey].sourceIndex;
                 
                 let optionsHtml = rawHeaders.map((h, i) => {
@@ -923,7 +941,7 @@
         }
 
         function applyMappingChanges() {
-            ['A', 'Y', 'L', 'C', 'R'].forEach(colKey => {
+            TARGET_COLUMNS.forEach(colKey => {
                 const sel = document.getElementById(`map-select-${colKey}`);
                 if (sel) {
                     const newIdx = parseInt(sel.value);
@@ -942,7 +960,7 @@
             const container = document.getElementById('mapping-summary-tags');
             if (!container) return;
 
-            const tags = ['A', 'Y', 'L', 'C', 'R'].map(k => {
+            const tags = TARGET_COLUMNS.map(k => {
                 const hName = columnMapping[k].headerName;
                 return `<span class="bg-white text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded font-mono font-medium">Col ${k} &rarr; ${hName || 'Col #' + (columnMapping[k].sourceIndex + 1)}</span>`;
             }).join('');
@@ -952,16 +970,17 @@
 
         // GENERATE SAMPLE CSV FOR IMMEDIATE DEMO TESTING
         function generateSampleCSV() {
-            showLoader('Generating sample dataset...');
+            showLoader('Generating sample dataset with 40 columns...');
             
             setTimeout(() => {
-                // Generate 50 realistic ecommerce order rows with 30 columns to test Col A (1), Col Y (25), Col L (12), Col C (3), Col R (18)
-                rawHeaders = Array.from({ length: 30 }, (_, i) => {
+                // Generate 150 realistic order rows with 40 columns to test Col A (1), Col Y (25), Col L (12), Col C (3), Col R (18), Col AH (34)
+                rawHeaders = Array.from({ length: 40 }, (_, i) => {
                     if (i === 0) return 'A_Order_ID';
                     if (i === 2) return 'C_Customer_Name';
                     if (i === 11) return 'L_Shipping_City';
                     if (i === 17) return 'R_Total_Amount';
                     if (i === 24) return 'Y_Order_Status';
+                    if (i === 33) return 'AH_Tracking_Number';
                     return `Header_Col_${i + 1}`;
                 });
 
@@ -971,15 +990,16 @@
 
                 rawRows = [];
                 for (let i = 1; i <= 150; i++) {
-                    let row = new Array(30).fill('');
+                    let row = new Array(40).fill('');
                     row[0] = `ORD-${1000 + i}`;
                     row[2] = names[i % names.length];
                     row[11] = cities[i % cities.length];
                     row[17] = (Math.random() * 200 + 15).toFixed(2);
                     row[24] = statuses[i % statuses.length];
+                    row[33] = `TRK-US998877${100 + i}`;
 
                     // Fill remaining columns with dummy data
-                    for (let c = 0; c < 30; c++) {
+                    for (let c = 0; c < 40; c++) {
                         if (!row[c]) row[c] = `Data_${i}_${c + 1}`;
                     }
                     rawRows.push(row);
@@ -988,7 +1008,7 @@
                 autoDetectColumnMapping();
                 extractMappedData();
 
-                document.getElementById('file-name-display').textContent = 'Sample_Orders_30Cols.csv';
+                document.getElementById('file-name-display').textContent = 'Sample_Orders_40Cols.csv';
                 document.getElementById('file-status-badge').classList.remove('hidden');
                 document.getElementById('download-btn-top').disabled = false;
                 document.getElementById('copy-btn-top').disabled = false;
