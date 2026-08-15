@@ -127,7 +127,7 @@
                     <div class="flex space-x-3 text-xs text-gray-600 mt-0.5">
                         <span class="hover:bg-gray-100 px-1.5 py-0.5 rounded cursor-pointer" onclick="document.getElementById('file-input').click()"><i class="fa-solid fa-folder-open mr-1"></i> File</span>
                         <span class="hover:bg-gray-100 px-1.5 py-0.5 rounded cursor-pointer" onclick="openMappingModal()"><i class="fa-solid fa-sliders mr-1"></i> Column Mapper</span>
-                        <span class="hover:bg-gray-100 px-1.5 py-0.5 rounded cursor-pointer" onclick="copyToClipboard('all')"><i class="fa-solid fa-copy mr-1 text-amber-600"></i> Copy All</span>
+                        <span class="hover:bg-gray-100 px-1.5 py-0.5 rounded cursor-pointer" onclick="copyToClipboard('all')"><i class="fa-solid fa-copy mr-1 text-amber-600"></i> Copy Data Only</span>
                         <span class="hover:bg-gray-100 px-1.5 py-0.5 rounded cursor-pointer" onclick="exportData('csv')"><i class="fa-solid fa-file-export mr-1"></i> Export CSV</span>
                         <span class="hover:bg-gray-100 px-1.5 py-0.5 rounded cursor-pointer" onclick="exportData('xlsx')"><i class="fa-solid fa-file-excel mr-1"></i> Export Excel</span>
                         <span class="hover:bg-gray-100 px-1.5 py-0.5 rounded cursor-pointer" onclick="generateSampleCSV()"><i class="fa-solid fa-wand-magic-sparkles mr-1 text-amber-600"></i> Sample Data</span>
@@ -143,8 +143,8 @@
             <button onclick="document.getElementById('file-input').click()" class="bg-gsheet-green hover:bg-gsheet-darkgreen text-white text-sm font-medium px-4 py-1.5 rounded shadow flex items-center transition">
                 <i class="fa-solid fa-upload mr-2"></i> Upload File
             </button>
-            <button id="copy-btn-top" onclick="copyToClipboard('all')" disabled class="bg-amber-600 hover:bg-amber-700 disabled:opacity-40 text-white text-sm font-medium px-4 py-1.5 rounded shadow flex items-center transition">
-                <i class="fa-solid fa-copy mr-2"></i> Copy Data
+            <button id="copy-btn-top" onclick="copyToClipboard('all')" disabled class="bg-amber-600 hover:bg-amber-700 disabled:opacity-40 text-white text-sm font-medium px-4 py-1.5 rounded shadow flex items-center transition" title="Copy data rows without headers">
+                <i class="fa-solid fa-copy mr-2"></i> Copy Data (No Headers)
             </button>
             <button id="download-btn-top" onclick="exportData('csv')" disabled class="bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-medium px-4 py-1.5 rounded shadow flex items-center transition">
                 <i class="fa-solid fa-download mr-2"></i> Download
@@ -173,15 +173,22 @@
 
         <div class="h-4 w-px bg-gray-300"></div>
 
-        <!-- Target Columns Badge -->
-        <div class="flex items-center space-x-1">
-            <span class="text-gray-500 font-medium">Extracted Columns:</span>
-            <span class="bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded">A</span>
-            <span class="bg-purple-100 text-purple-800 font-bold px-1.5 py-0.5 rounded">Y</span>
-            <span class="bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded">L</span>
-            <span class="bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded">C</span>
-            <span class="bg-rose-100 text-rose-800 font-bold px-1.5 py-0.5 rounded">R</span>
-            <span class="bg-cyan-100 text-cyan-800 font-bold px-1.5 py-0.5 rounded">AH</span>
+        <!-- Copy Option & Target Columns Badge -->
+        <div class="flex items-center space-x-3">
+            <label class="flex items-center space-x-1.5 cursor-pointer text-gray-600 select-none">
+                <input type="checkbox" id="include-headers-checkbox" class="rounded text-gsheet-green focus:ring-0 cursor-pointer">
+                <span>Include headers on copy</span>
+            </label>
+            <div class="h-3 w-px bg-gray-300"></div>
+            <div class="flex items-center space-x-1">
+                <span class="text-gray-500 font-medium">Extracted:</span>
+                <span class="bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded">A</span>
+                <span class="bg-purple-100 text-purple-800 font-bold px-1.5 py-0.5 rounded">Y</span>
+                <span class="bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded">L</span>
+                <span class="bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded">C</span>
+                <span class="bg-rose-100 text-rose-800 font-bold px-1.5 py-0.5 rounded">R</span>
+                <span class="bg-cyan-100 text-cyan-800 font-bold px-1.5 py-0.5 rounded">AH</span>
+            </div>
         </div>
     </div>
 
@@ -262,7 +269,7 @@
                                 <div class="flex items-center justify-between">
                                     <span><span class="text-blue-600 font-bold">A</span> <span id="header-name-A" class="text-gray-500 font-normal"></span></span>
                                     <div class="flex items-center space-x-1">
-                                        <button onclick="event.stopPropagation(); copyToClipboard('col', 'A')" title="Copy Column A values" class="text-gray-400 hover:text-blue-600 p-0.5">
+                                        <button onclick="event.stopPropagation(); copyToClipboard('col', 'A')" title="Copy Column A data rows" class="text-gray-400 hover:text-blue-600 p-0.5">
                                             <i class="fa-regular fa-copy"></i>
                                         </button>
                                         <i id="sort-icon-A" class="fa-solid fa-sort text-gray-400"></i>
@@ -273,7 +280,7 @@
                                 <div class="flex items-center justify-between">
                                     <span><span class="text-purple-600 font-bold">Y</span> <span id="header-name-Y" class="text-gray-500 font-normal"></span></span>
                                     <div class="flex items-center space-x-1">
-                                        <button onclick="event.stopPropagation(); copyToClipboard('col', 'Y')" title="Copy Column Y values" class="text-gray-400 hover:text-purple-600 p-0.5">
+                                        <button onclick="event.stopPropagation(); copyToClipboard('col', 'Y')" title="Copy Column Y data rows" class="text-gray-400 hover:text-purple-600 p-0.5">
                                             <i class="fa-regular fa-copy"></i>
                                         </button>
                                         <i id="sort-icon-Y" class="fa-solid fa-sort text-gray-400"></i>
@@ -284,7 +291,7 @@
                                 <div class="flex items-center justify-between">
                                     <span><span class="text-amber-600 font-bold">L</span> <span id="header-name-L" class="text-gray-500 font-normal"></span></span>
                                     <div class="flex items-center space-x-1">
-                                        <button onclick="event.stopPropagation(); copyToClipboard('col', 'L')" title="Copy Column L values" class="text-gray-400 hover:text-amber-600 p-0.5">
+                                        <button onclick="event.stopPropagation(); copyToClipboard('col', 'L')" title="Copy Column L data rows" class="text-gray-400 hover:text-amber-600 p-0.5">
                                             <i class="fa-regular fa-copy"></i>
                                         </button>
                                         <i id="sort-icon-L" class="fa-solid fa-sort text-gray-400"></i>
@@ -295,7 +302,7 @@
                                 <div class="flex items-center justify-between">
                                     <span><span class="text-emerald-600 font-bold">C</span> <span id="header-name-C" class="text-gray-500 font-normal"></span></span>
                                     <div class="flex items-center space-x-1">
-                                        <button onclick="event.stopPropagation(); copyToClipboard('col', 'C')" title="Copy Column C values" class="text-gray-400 hover:text-emerald-600 p-0.5">
+                                        <button onclick="event.stopPropagation(); copyToClipboard('col', 'C')" title="Copy Column C data rows" class="text-gray-400 hover:text-emerald-600 p-0.5">
                                             <i class="fa-regular fa-copy"></i>
                                         </button>
                                         <i id="sort-icon-C" class="fa-solid fa-sort text-gray-400"></i>
@@ -306,7 +313,7 @@
                                 <div class="flex items-center justify-between">
                                     <span><span class="text-rose-600 font-bold">R</span> <span id="header-name-R" class="text-gray-500 font-normal"></span></span>
                                     <div class="flex items-center space-x-1">
-                                        <button onclick="event.stopPropagation(); copyToClipboard('col', 'R')" title="Copy Column R values" class="text-gray-400 hover:text-rose-600 p-0.5">
+                                        <button onclick="event.stopPropagation(); copyToClipboard('col', 'R')" title="Copy Column R data rows" class="text-gray-400 hover:text-rose-600 p-0.5">
                                             <i class="fa-regular fa-copy"></i>
                                         </button>
                                         <i id="sort-icon-R" class="fa-solid fa-sort text-gray-400"></i>
@@ -317,7 +324,7 @@
                                 <div class="flex items-center justify-between">
                                     <span><span class="text-cyan-600 font-bold">AH</span> <span id="header-name-AH" class="text-gray-500 font-normal"></span></span>
                                     <div class="flex items-center space-x-1">
-                                        <button onclick="event.stopPropagation(); copyToClipboard('col', 'AH')" title="Copy Column AH values" class="text-gray-400 hover:text-cyan-600 p-0.5">
+                                        <button onclick="event.stopPropagation(); copyToClipboard('col', 'AH')" title="Copy Column AH data rows" class="text-gray-400 hover:text-cyan-600 p-0.5">
                                             <i class="fa-regular fa-copy"></i>
                                         </button>
                                         <i id="sort-icon-AH" class="fa-solid fa-sort text-gray-400"></i>
@@ -361,8 +368,8 @@
 
                 <!-- Copy & Download Actions -->
                 <div class="flex items-center space-x-2">
-                    <button onclick="copyToClipboard('all')" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded font-medium shadow flex items-center transition">
-                        <i class="fa-solid fa-copy mr-1.5"></i> Copy Data (TSV)
+                    <button onclick="copyToClipboard('all')" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded font-medium shadow flex items-center transition" title="Copy data rows without headers">
+                        <i class="fa-solid fa-copy mr-1.5"></i> Copy Data (No Headers)
                     </button>
                     <button onclick="exportData('csv')" class="bg-gsheet-green hover:bg-gsheet-darkgreen text-white px-3 py-1.5 rounded font-medium shadow flex items-center transition">
                         <i class="fa-solid fa-file-csv mr-1.5"></i> Download CSV
@@ -803,28 +810,38 @@
             renderSheetData();
         }
 
-        // COPY TO CLIPBOARD FUNCTION (Supports TSV format for pasting into Excel / Sheets)
+        // COPY TO CLIPBOARD FUNCTION (Excludes CSV headers by default for clean pasting into Excel/Sheets)
         async function copyToClipboard(mode, specificCol = null) {
             if (!filteredData || filteredData.length === 0) {
                 showToast('No data available to copy!', true);
                 return;
             }
 
+            const includeHeaders = document.getElementById('include-headers-checkbox')?.checked || false;
             let textContent = '';
             let msg = '';
 
             if (mode === 'col' && specificCol) {
                 // Copy single column values
-                const header = specificCol;
                 const rows = filteredData.map(r => r[specificCol]);
-                textContent = [header, ...rows].join('\n');
-                msg = `Copied Column ${specificCol} (${filteredData.length.toLocaleString()} rows) to clipboard!`;
+                if (includeHeaders) {
+                    textContent = [specificCol, ...rows].join('\n');
+                    msg = `Copied Column ${specificCol} with headers (${filteredData.length.toLocaleString()} rows) to clipboard!`;
+                } else {
+                    textContent = rows.join('\n');
+                    msg = `Copied Column ${specificCol} (${filteredData.length.toLocaleString()} data rows, no header) to clipboard!`;
+                }
             } else {
                 // Copy all 6 columns (A, Y, L, C, R, AH) formatted with Tabs for Excel/Sheets pasting
-                const headers = TARGET_COLUMNS.join('\t');
                 const rows = filteredData.map(r => TARGET_COLUMNS.map(k => r[k]).join('\t')).join('\n');
-                textContent = `${headers}\n${rows}`;
-                msg = `Copied ${filteredData.length.toLocaleString()} rows (A, Y, L, C, R, AH) to clipboard!`;
+                if (includeHeaders) {
+                    const headers = TARGET_COLUMNS.join('\t');
+                    textContent = `${headers}\n${rows}`;
+                    msg = `Copied ${filteredData.length.toLocaleString()} rows (with headers) to clipboard!`;
+                } else {
+                    textContent = rows;
+                    msg = `Copied ${filteredData.length.toLocaleString()} data rows (no headers) to clipboard!`;
+                }
             }
 
             try {
