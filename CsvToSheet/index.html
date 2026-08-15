@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Sheets - CSV Column Extractor (A, Y, L, C, R)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- JSZip for handling ZIP files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- PapaParse for CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- SheetJS for Excel export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        gsheet: {
+                            green: '#0f9d58',
+                            darkgreen: '#0b8043',
+                            lightbg: '#f8f9fa',
+                            border: '#e0e0e0',
+                            headerbg: '#f1f3f4',
+                            selected: '#e8f0fe',
+                            activeblue: '#1a73e8'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Google Sheets Grid styling */
+        .sheet-grid {
+            border-collapse: collapse;
+            user-select: text;
+        }
+        .sheet-grid th {
+            background-color: #f8f9fa;
+            border: 1px solid #dadce0;
+            font-weight: 600;
+            color: #3c4043;
+            font-size: 12px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .sheet-grid td {
+            border: 1px solid #e0e0e0;
+            font-size: 13px;
+            color: #202124;
+            padding: 6px 12px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 250px;
+        }
+        .sheet-grid tr:hover td {
+            background-color: #f1f3f4;
+        }
+        .sheet-grid td.cell-selected {
+            outline: 2px solid #1a73e8;
+            background-color: #e8f0fe !important;
+            z-index: 2;
+        }
+        .row-header {
+            background-color: #f8f9fa;
+            border: 1px solid #dadce0;
+            color: #5f6368;
+            font-weight: 500;
+            font-size: 11px;
+            text-align: center;
+            width: 45px;
+            min-width: 45px;
+            user-select: none;
+            position: sticky;
+            left: 0;
+            z-index: 5;
+        }
+        .dropzone-active {
+            border-color: #0f9d58 !important;
+            background-color: #e6f4ea !important;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #0f9d58;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans flex flex-col h-screen overflow-hidden">
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="hidden fixed bottom-12 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white text-xs px-4 py-2.5 rounded-full shadow-2xl flex items-center space-x-2 border border-gray-700 transition-all duration-300">
+        <i class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+        <span id="toast-message">Copied data to clipboard!</span>
+    </div>
+
+    <!-- TOP GOOGLE SHEETS HEADER -->
+    <header class="bg-white border-b border-gray-300 px-4 py-2 flex items-center justify-between shadow-sm">
+        <div class="flex items-center space-x-3">
+            <div class="flex items-center space-x-2 cursor-pointer" onclick="window.location.reload()">
+                <div class="bg-gsheet-green text-white p-2 rounded-lg flex items-center justify-center shadow">
+                    <i class="fa-solid fa-file-csv text-xl"></i>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <h1 class="text-base font-semibold text-gray-800 leading-tight">Google Sheets - CSV Extractor</h1>
+                        <span class="bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded font-medium border border-green-300">Columns A, Y, L, C, R</span>
+                    </div>
+                    <!-- Menu strip -->
+                    <div class="flex space-x-3 text-xs text-gray-600 mt-0.5">
+                        <span class="hover:bg-gray-100 px-1.5 py-0.5 rounded cursor-pointer" onclick="document.getElementById('file-input').click()"><i class="fa-solid fa-folder-open mr-1"></i> File</span>
+                        <span class="hover:bg-gray-100 px-1.5 py-0.5 rounded cursor-pointer" onclick="openMappingModal()"><i class="fa-solid fa-sliders mr-1"></i> Column Mapper</span>
+                        <span class="hover:bg-gray-100 px-1.5 py-0.5 rounded cursor-pointer" onclick="copyToClipboard('all')"><i class="fa-solid fa-copy mr-1 text-amber-600"></i> Copy All</span>
+                        <span class="hover:bg-gray-100 px-1.5 py-0.5 rounded cursor-pointer" onclick="exportData('csv')"><i class="fa-solid fa-file-export mr-1"></i> Export CSV</span>
+                        <span class="hover:bg-gray-100 px-1.5 py-0.5 rounded cursor-pointer" onclick="exportData('xlsx')"><i class="fa-solid fa-file-excel mr-1"></i> Export Excel</span>
+                        <span class="hover:bg-gray-100 px-1.5 py-0.5 rounded cursor-pointer" onclick="generateSampleCSV()"><i class="fa-solid fa-wand-magic-sparkles mr-1 text-amber-600"></i> Sample Data</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-2">
+            <span id="file-status-badge" class="hidden text-xs bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-200 flex items-center">
+                <i class="fa-solid fa-check-circle mr-1 text-emerald-500"></i> <span id="file-name-display">File Loaded</span>
+            </span>
+            <button onclick="document.getElementById('file-input').click()" class="bg-gsheet-green hover:bg-gsheet-darkgreen text-white text-sm font-medium px-4 py-1.5 rounded shadow flex items-center transition">
+                <i class="fa-solid fa-upload mr-2"></i> Upload File
+            </button>
+            <button id="copy-btn-top" onclick="copyToClipboard('all')" disabled class="bg-amber-600 hover:bg-amber-700 disabled:opacity-40 text-white text-sm font-medium px-4 py-1.5 rounded shadow flex items-center transition">
+                <i class="fa-solid fa-copy mr-2"></i> Copy Data
+            </button>
+            <button id="download-btn-top" onclick="exportData('csv')" disabled class="bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-medium px-4 py-1.5 rounded shadow flex items-center transition">
+                <i class="fa-solid fa-download mr-2"></i> Download
+            </button>
+        </div>
+    </header>
+
+    <!-- FORMULA / TOOLBAR ROW -->
+    <div class="bg-white border-b border-gray-300 px-4 py-1.5 flex items-center space-x-4 text-xs text-gray-700">
+        <!-- Search bar -->
+        <div class="relative flex-1 max-w-xs">
+            <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2 text-gray-400"></i>
+            <input type="text" id="search-input" oninput="handleSearch()" placeholder="Search extracted data..." class="w-full pl-8 pr-3 py-1 bg-gray-50 border border-gray-300 rounded focus:outline-none focus:border-gsheet-green text-xs">
+        </div>
+
+        <div class="h-4 w-px bg-gray-300"></div>
+
+        <!-- Formula Bar -->
+        <div class="flex items-center space-x-2 flex-1">
+            <span id="cell-address" class="font-mono bg-gray-100 px-2 py-0.5 rounded border border-gray-300 text-gray-600 w-14 text-center font-bold">A1</span>
+            <span class="text-gray-400 font-serif italic text-sm font-bold">fx</span>
+            <div id="cell-value-display" class="flex-1 bg-gray-50 border border-gray-200 rounded px-2 py-1 text-gray-800 font-mono overflow-hidden text-ellipsis whitespace-nowrap h-7 flex items-center">
+                Select a cell or upload a file to view data
+            </div>
+        </div>
+
+        <div class="h-4 w-px bg-gray-300"></div>
+
+        <!-- Target Columns Badge & Quick Copy Buttons -->
+        <div class="flex items-center space-x-1">
+            <span class="text-gray-500 font-medium">Extracted Columns:</span>
+            <span class="bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded">A</span>
+            <span class="bg-purple-100 text-purple-800 font-bold px-1.5 py-0.5 rounded">Y</span>
+            <span class="bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded">L</span>
+            <span class="bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded">C</span>
+            <span class="bg-rose-100 text-rose-800 font-bold px-1.5 py-0.5 rounded">R</span>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="flex-1 relative flex flex-col overflow-hidden bg-gray-50">
+        <input type="file" id="file-input" accept=".csv, .zip, application/zip, text/csv" class="hidden" onchange="handleFileSelect(event)">
+
+        <!-- UPLOAD PLACEHOLDER CONTAINER (Shown when no file uploaded) -->
+        <div id="upload-container" class="flex-1 flex flex-col items-center justify-center p-6">
+            <div id="drop-zone" 
+                 ondragover="handleDragOver(event)" 
+                 ondragleave="handleDragLeave(event)" 
+                 ondrop="handleFileDrop(event)"
+                 class="w-full max-w-2xl bg-white border-2 border-dashed border-gray-300 rounded-2xl p-10 text-center shadow-sm hover:shadow-md transition cursor-pointer flex flex-col items-center">
+                
+                <div class="w-16 h-16 bg-emerald-100 text-gsheet-green rounded-full flex items-center justify-center text-3xl mb-4 shadow-inner">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                </div>
+
+                <h2 class="text-xl font-bold text-gray-800 mb-1">Upload CSV or ZIP File</h2>
+                <p class="text-sm text-gray-500 max-w-md mb-6">
+                    Drag and drop your <span class="font-semibold text-gray-700">.csv</span> or <span class="font-semibold text-gray-700">.zip</span> archive (containing a single CSV file) to extract columns <span class="font-bold text-gsheet-green">A, Y, L, C, R</span> into Google Sheet format.
+                </p>
+
+                <div class="flex flex-wrap gap-3 justify-center mb-6">
+                    <button onclick="document.getElementById('file-input').click()" class="bg-gsheet-green hover:bg-gsheet-darkgreen text-white font-medium px-6 py-2.5 rounded-lg shadow transition flex items-center">
+                        <i class="fa-solid fa-file-lines mr-2"></i> Select File
+                    </button>
+                    <button onclick="generateSampleCSV()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-5 py-2.5 rounded-lg border border-gray-300 transition flex items-center">
+                        <i class="fa-solid fa-vial mr-2 text-amber-600"></i> Load Sample Data
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs text-gray-500 pt-4 border-t border-gray-100 w-full">
+                    <div class="bg-gray-50 p-2 rounded border border-gray-200 text-center"><strong class="text-blue-600 block">Col A</strong> 1st Col / Header A</div>
+                    <div class="bg-gray-50 p-2 rounded border border-gray-200 text-center"><strong class="text-purple-600 block">Col Y</strong> 25th Col / Header Y</div>
+                    <div class="bg-gray-50 p-2 rounded border border-gray-200 text-center"><strong class="text-amber-600 block">Col L</strong> 12th Col / Header L</div>
+                    <div class="bg-gray-50 p-2 rounded border border-gray-200 text-center"><strong class="text-emerald-600 block">Col C</strong> 3rd Col / Header C</div>
+                    <div class="bg-gray-50 p-2 rounded border border-gray-200 text-center"><strong class="text-rose-600 block">Col R</strong> 18th Col / Header R</div>
+                </div>
+            </div>
+
+            <!-- Loader indicator -->
+            <div id="loader" class="hidden mt-6 flex items-center space-x-3 text-gsheet-green font-medium bg-white px-5 py-3 rounded-xl shadow border border-gray-200">
+                <i class="fa-solid fa-spinner fa-spin text-xl"></i>
+                <span id="loader-text">Processing file data...</span>
+            </div>
+        </div>
+
+        <!-- GOOGLE SHEETS GRID CONTAINER (Shown after file is processed) -->
+        <div id="grid-container" class="hidden flex-1 flex flex-col h-full overflow-hidden bg-white">
+            
+            <!-- MAPPER & TOOLBAR BANNER -->
+            <div class="bg-emerald-50 border-b border-emerald-200 px-4 py-2 flex items-center justify-between text-xs">
+                <div class="flex items-center space-x-3">
+                    <span class="font-semibold text-emerald-900 flex items-center">
+                        <i class="fa-solid fa-table-columns text-emerald-600 mr-1.5"></i> Column Mapping Active:
+                    </span>
+                    <div id="mapping-summary-tags" class="flex items-center space-x-2">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="openMappingModal()" class="text-emerald-700 hover:text-emerald-900 font-medium underline flex items-center">
+                        <i class="fa-solid fa-gear mr-1"></i> Customize Column Mapping
+                    </button>
+                </div>
+            </div>
+
+            <!-- SPREADSHEET SCROLLABLE CONTAINER -->
+            <div class="flex-1 overflow-auto relative">
+                <table class="sheet-grid w-full">
+                    <thead>
+                        <tr>
+                            <th class="row-header">#</th>
+                            <th class="cursor-pointer hover:bg-gray-200 px-3 py-2 text-left" onclick="sortTable('A')">
+                                <div class="flex items-center justify-between">
+                                    <span><span class="text-blue-600 font-bold">A</span> <span id="header-name-A" class="text-gray-500 font-normal"></span></span>
+                                    <div class="flex items-center space-x-1">
+                                        <button onclick="event.stopPropagation(); copyToClipboard('col', 'A')" title="Copy Column A values" class="text-gray-400 hover:text-blue-600 p-0.5">
+                                            <i class="fa-regular fa-copy"></i>
+                                        </button>
+                                        <i id="sort-icon-A" class="fa-solid fa-sort text-gray-400"></i>
+                                    </div>
+                                </div>
+                            </th>
+                            <th class="cursor-pointer hover:bg-gray-200 px-3 py-2 text-left" onclick="sortTable('Y')">
+                                <div class="flex items-center justify-between">
+                                    <span><span class="text-purple-600 font-bold">Y</span> <span id="header-name-Y" class="text-gray-500 font-normal"></span></span>
+                                    <div class="flex items-center space-x-1">
+                                        <button onclick="event.stopPropagation(); copyToClipboard('col', 'Y')" title="Copy Column Y values" class="text-gray-400 hover:text-purple-600 p-0.5">
+                                            <i class="fa-regular fa-copy"></i>
+                                        </button>
+                                        <i id="sort-icon-Y" class="fa-solid fa-sort text-gray-400"></i>
+                                    </div>
+                                </div>
+                            </th>
+                            <th class="cursor-pointer hover:bg-gray-200 px-3 py-2 text-left" onclick="sortTable('L')">
+                                <div class="flex items-center justify-between">
+                                    <span><span class="text-amber-600 font-bold">L</span> <span id="header-name-L" class="text-gray-500 font-normal"></span></span>
+                                    <div class="flex items-center space-x-1">
+                                        <button onclick="event.stopPropagation(); copyToClipboard('col', 'L')" title="Copy Column L values" class="text-gray-400 hover:text-amber-600 p-0.5">
+                                            <i class="fa-regular fa-copy"></i>
+                                        </button>
+                                        <i id="sort-icon-L" class="fa-solid fa-sort text-gray-400"></i>
+                                    </div>
+                                </div>
+                            </th>
+                            <th class="cursor-pointer hover:bg-gray-200 px-3 py-2 text-left" onclick="sortTable('C')">
+                                <div class="flex items-center justify-between">
+                                    <span><span class="text-emerald-600 font-bold">C</span> <span id="header-name-C" class="text-gray-500 font-normal"></span></span>
+                                    <div class="flex items-center space-x-1">
+                                        <button onclick="event.stopPropagation(); copyToClipboard('col', 'C')" title="Copy Column C values" class="text-gray-400 hover:text-emerald-600 p-0.5">
+                                            <i class="fa-regular fa-copy"></i>
+                                        </button>
+                                        <i id="sort-icon-C" class="fa-solid fa-sort text-gray-400"></i>
+                                    </div>
+                                </div>
+                            </th>
+                            <th class="cursor-pointer hover:bg-gray-200 px-3 py-2 text-left" onclick="sortTable('R')">
+                                <div class="flex items-center justify-between">
+                                    <span><span class="text-rose-600 font-bold">R</span> <span id="header-name-R" class="text-gray-500 font-normal"></span></span>
+                                    <div class="flex items-center space-x-1">
+                                        <button onclick="event.stopPropagation(); copyToClipboard('col', 'R')" title="Copy Column R values" class="text-gray-400 hover:text-rose-600 p-0.5">
+                                            <i class="fa-regular fa-copy"></i>
+                                        </button>
+                                        <i id="sort-icon-R" class="fa-solid fa-sort text-gray-400"></i>
+                                    </div>
+                                </div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="sheet-body">
+                        <!-- Table rows injected via JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- BOTTOM PAGINATION & COPY/DOWNLOAD BAR -->
+            <div class="bg-white border-t border-gray-300 px-4 py-2 flex items-center justify-between text-xs text-gray-600">
+                <div class="flex items-center space-x-4">
+                    <span>Showing <strong id="visible-count">0</strong> of <strong id="total-count">0</strong> rows</span>
+                    <div class="flex items-center space-x-1">
+                        <span>Per Page:</span>
+                        <select id="page-size-select" onchange="changePageSize(this.value)" class="border border-gray-300 rounded px-1.5 py-0.5 bg-white text-xs">
+                            <option value="50">50</option>
+                            <option value="100" selected>100</option>
+                            <option value="500">500</option>
+                            <option value="1000">1000</option>
+                            <option value="999999">All</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Page navigation -->
+                <div class="flex items-center space-x-2">
+                    <button id="prev-page-btn" onclick="navigatePage(-1)" disabled class="px-2 py-1 bg-gray-100 border border-gray-300 rounded disabled:opacity-40 hover:bg-gray-200">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <span>Page <strong id="current-page-num">1</strong> of <strong id="total-pages-num">1</strong></span>
+                    <button id="next-page-btn" onclick="navigatePage(1)" disabled class="px-2 py-1 bg-gray-100 border border-gray-300 rounded disabled:opacity-40 hover:bg-gray-200">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
+
+                <!-- Copy & Download Actions -->
+                <div class="flex items-center space-x-2">
+                    <button onclick="copyToClipboard('all')" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded font-medium shadow flex items-center transition">
+                        <i class="fa-solid fa-copy mr-1.5"></i> Copy Data (TSV)
+                    </button>
+                    <button onclick="exportData('csv')" class="bg-gsheet-green hover:bg-gsheet-darkgreen text-white px-3 py-1.5 rounded font-medium shadow flex items-center transition">
+                        <i class="fa-solid fa-file-csv mr-1.5"></i> Download CSV
+                    </button>
+                    <button onclick="exportData('xlsx')" class="bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-1.5 rounded font-medium shadow flex items-center transition">
+                        <i class="fa-solid fa-file-excel mr-1.5"></i> Download Excel
+                    </button>
+                </div>
+            </div>
+
+            <!-- SHEET TAB & STATS FOOTER BAR -->
+            <div class="bg-gray-100 border-t border-gray-300 px-4 py-1 flex items-center justify-between text-xs text-gray-500">
+                <div class="flex items-center space-x-1">
+                    <div class="bg-white border-t-2 border-gsheet-green border-x border-gray-300 px-3 py-1 font-semibold text-gsheet-green flex items-center rounded-t">
+                        <i class="fa-solid fa-sheet-plastic mr-1.5"></i> Extracted (A, Y, L, C, R)
+                    </div>
+                </div>
+                <div id="stats-summary" class="flex items-center space-x-4 font-mono text-gray-600 bg-white px-3 py-0.5 rounded border border-gray-200">
+                    <span>Count: <strong id="stat-count" class="text-gray-800">0</strong></span>
+                    <span>Sum: <strong id="stat-sum" class="text-gray-800">0</strong></span>
+                    <span>Average: <strong id="stat-avg" class="text-gray-800">0</strong></span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- COLUMN MAPPING MODAL -->
+    <div id="mapping-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-200">
+            <div class="flex items-center justify-between border-b border-gray-200 pb-3 mb-4">
+                <h3 class="text-lg font-bold text-gray-800 flex items-center">
+                    <i class="fa-solid fa-sliders text-gsheet-green mr-2"></i> Configure Target Column Mapping
+                </h3>
+                <button onclick="closeMappingModal()" class="text-gray-400 hover:text-gray-600 text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <p class="text-xs text-gray-500 mb-4">
+                Map source CSV headers to the 5 output Google Sheet columns (<strong class="text-gray-700">A, Y, L, C, R</strong>).
+            </p>
+
+            <div class="space-y-3 mb-6" id="mapping-selectors-container">
+                <!-- Selectors populated dynamically -->
+            </div>
+
+            <div class="flex items-center justify-end space-x-3 pt-3 border-t border-gray-200">
+                <button onclick="closeMappingModal()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+                <button onclick="applyMappingChanges()" class="px-5 py-2 text-sm bg-gsheet-green hover:bg-gsheet-darkgreen text-white font-semibold rounded-lg shadow">Apply & Re-extract</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // Global Application State
+        let rawHeaders = [];
+        let rawRows = [];
+        let extractedData = []; // Array of objects with keys: A, Y, L, C, R
+        let filteredData = [];
+        let currentSort = { column: null, direction: 'asc' };
+        
+        // Active Column Map (Target -> Source Index or Name)
+        let columnMapping = {
+            A: { label: 'Column A', sourceIndex: 0, headerName: '' },
+            Y: { label: 'Column Y', sourceIndex: 24, headerName: '' },
+            L: { label: 'Column L', sourceIndex: 11, headerName: '' },
+            C: { label: 'Column C', sourceIndex: 2, headerName: '' },
+            R: { label: 'Column R', sourceIndex: 17, headerName: '' }
+        };
+
+        // Pagination State
+        let currentPage = 1;
+        let pageSize = 100;
+        let selectedCell = { row: 0, colKey: 'A' };
+
+        // DRAG & DROP HANDLERS
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            document.getElementById('drop-zone').classList.add('dropzone-active');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            document.getElementById('drop-zone').classList.remove('dropzone-active');
+        }
+
+        function handleFileDrop(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            document.getElementById('drop-zone').classList.remove('dropzone-active');
+            
+            const files = e.dataTransfer.files;
+            if (files && files.length > 0) {
+                processUploadedFile(files[0]);
+            }
+        }
+
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files && files.length > 0) {
+                processUploadedFile(files[0]);
+            }
+        }
+
+        // MAIN FILE PROCESSOR (Handles CSV and ZIP)
+        async function processUploadedFile(file) {
+            showLoader(`Reading ${file.name}...`);
+            const fileName = file.name.toLowerCase();
+
+            try {
+                if (fileName.endsWith('.zip')) {
+                    showLoader('Unzipping archive...');
+                    const zip = new JSZip();
+                    const zipContent = await zip.loadAsync(file);
+                    
+                    // Find first CSV file inside the zip archive
+                    let csvFileName = null;
+                    zip.forEach((relativePath, zipEntry) => {
+                        if (!zipEntry.dir && relativePath.toLowerCase().endsWith('.csv')) {
+                            if (!csvFileName) csvFileName = relativePath;
+                        }
+                    });
+
+                    if (!csvFileName) {
+                        alert('No CSV file found inside the uploaded ZIP archive!');
+                        hideLoader();
+                        return;
+                    }
+
+                    showLoader(`Extracting ${csvFileName}...`);
+                    const csvText = await zipContent.file(csvFileName).async('string');
+                    parseCSVContent(csvText, file.name);
+                } else if (fileName.endsWith('.csv') || file.type === 'text/csv' || file.type.includes('csv')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        parseCSVContent(e.target.result, file.name);
+                    };
+                    reader.readAsText(file);
+                } else {
+                    alert('Unsupported file format. Please upload a .csv or .zip file.');
+                    hideLoader();
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Error processing file: ' + err.message);
+                hideLoader();
+            }
+        }
+
+        // PARSE CSV CONTENT USING PAPAPARSE
+        function parseCSVContent(csvText, fileName) {
+            showLoader('Parsing CSV rows...');
+
+            Papa.parse(csvText, {
+                header: false,
+                skipEmptyLines: true,
+                dynamicTyping: false,
+                complete: function(results) {
+                    if (!results.data || results.data.length === 0) {
+                        alert('The CSV file is empty.');
+                        hideLoader();
+                        return;
+                    }
+
+                    // First row as headers
+                    rawHeaders = results.data[0].map(h => String(h || '').trim());
+                    rawRows = results.data.slice(1);
+
+                    // Auto Detect / Setup default mapping
+                    autoDetectColumnMapping();
+
+                    // Process dataset to extract A, Y, L, C, R
+                    extractMappedData();
+
+                    // Update UI
+                    document.getElementById('file-name-display').textContent = fileName;
+                    document.getElementById('file-status-badge').classList.remove('hidden');
+                    document.getElementById('download-btn-top').disabled = false;
+                    document.getElementById('copy-btn-top').disabled = false;
+
+                    document.getElementById('upload-container').classList.add('hidden');
+                    document.getElementById('grid-container').classList.remove('hidden');
+
+                    hideLoader();
+                    renderSheetData();
+                },
+                error: function(err) {
+                    alert('CSV Parsing error: ' + err.message);
+                    hideLoader();
+                }
+            });
+        }
+
+        // AUTO DETECT SOURCE COLUMNS FOR A, Y, L, C, R
+        function autoDetectColumnMapping() {
+            // Target keys: A, Y, L, C, R
+            const targets = [
+                { key: 'A', defaultIdx: 0, letter: 'A' },
+                { key: 'Y', defaultIdx: 24, letter: 'Y' },
+                { key: 'L', defaultIdx: 11, letter: 'L' },
+                { key: 'C', defaultIdx: 2, letter: 'C' },
+                { key: 'R', defaultIdx: 17, letter: 'R' }
+            ];
+
+            targets.forEach(target => {
+                let foundIdx = -1;
+                let foundName = '';
+
+                // 1. Exact or matching header name search (e.g. Header named "A", "Column A", "Status Y", etc.)
+                const matchHeaderIdx = rawHeaders.findIndex(h => {
+                    const norm = h.toUpperCase().trim();
+                    return norm === target.letter || norm === `COLUMN ${target.letter}` || norm === `COL ${target.letter}`;
+                });
+
+                if (matchHeaderIdx !== -1) {
+                    foundIdx = matchHeaderIdx;
+                    foundName = rawHeaders[matchHeaderIdx];
+                } else if (target.defaultIdx < rawHeaders.length) {
+                    // 2. Positional fallback (Col 1 = 0, Col 25 = 24, Col 12 = 11, Col 3 = 2, Col 18 = 17)
+                    foundIdx = target.defaultIdx;
+                    foundName = rawHeaders[target.defaultIdx] || `Col #${target.defaultIdx + 1}`;
+                } else {
+                    // 3. Fallback to index if within bounds or -1
+                    foundIdx = Math.min(target.defaultIdx, rawHeaders.length - 1);
+                    foundName = rawHeaders[foundIdx] || `Col #${foundIdx + 1}`;
+                }
+
+                columnMapping[target.key] = {
+                    label: `Column ${target.letter}`,
+                    sourceIndex: foundIdx,
+                    headerName: foundName
+                };
+            });
+
+            updateMappingSummaryUI();
+        }
+
+        // EXTRACT A, Y, L, C, R COLUMNS FROM RAW ROWS
+        function extractMappedData() {
+            extractedData = rawRows.map(row => {
+                return {
+                    A: getCellValue(row, columnMapping.A.sourceIndex),
+                    Y: getCellValue(row, columnMapping.Y.sourceIndex),
+                    L: getCellValue(row, columnMapping.L.sourceIndex),
+                    C: getCellValue(row, columnMapping.C.sourceIndex),
+                    R: getCellValue(row, columnMapping.R.sourceIndex)
+                };
+            });
+
+            filteredData = [...extractedData];
+            currentPage = 1;
+        }
+
+        function getCellValue(row, index) {
+            if (index < 0 || index >= row.length || row[index] === undefined || row[index] === null) {
+                return '';
+            }
+            return String(row[index]).trim();
+        }
+
+        // RENDER DATA IN GOOGLE SHEET GRID
+        function renderSheetData() {
+            const tbody = document.getElementById('sheet-body');
+            tbody.innerHTML = '';
+
+            // Update column headers info
+            ['A', 'Y', 'L', 'C', 'R'].forEach(col => {
+                const hName = columnMapping[col].headerName;
+                document.getElementById(`header-name-${col}`).textContent = hName ? `(${hName})` : '';
+            });
+
+            const total = filteredData.length;
+            document.getElementById('total-count').textContent = total.toLocaleString();
+
+            const startIdx = (currentPage - 1) * pageSize;
+            const endIdx = Math.min(startIdx + pageSize, total);
+            const pageData = filteredData.slice(startIdx, endIdx);
+
+            document.getElementById('visible-count').textContent = pageData.length.toLocaleString();
+            document.getElementById('current-page-num').textContent = currentPage;
+            const totalPages = Math.max(1, Math.ceil(total / pageSize));
+            document.getElementById('total-pages-num').textContent = totalPages;
+
+            document.getElementById('prev-page-btn').disabled = currentPage <= 1;
+            document.getElementById('next-page-btn').disabled = currentPage >= totalPages;
+
+            if (pageData.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center py-12 text-gray-400">
+                            <i class="fa-solid fa-folder-open text-3xl mb-2 block"></i>
+                            No matching records found.
+                        </td>
+                    </tr>`;
+                calculateStatistics();
+                return;
+            }
+
+            const fragment = document.createDocumentFragment();
+
+            pageData.forEach((rowObj, idx) => {
+                const rowIndex = startIdx + idx + 1;
+                const tr = document.createElement('tr');
+
+                // Row Header #
+                const thRow = document.createElement('th');
+                thRow.className = 'row-header';
+                thRow.textContent = rowIndex;
+                tr.appendChild(thRow);
+
+                // Columns A, Y, L, C, R
+                ['A', 'Y', 'L', 'C', 'R'].forEach(colKey => {
+                    const td = document.createElement('td');
+                    const val = rowObj[colKey];
+                    td.textContent = val;
+                    td.title = val;
+
+                    td.onclick = () => selectCell(rowIndex, colKey, val, td);
+                    
+                    if (selectedCell.row === rowIndex && selectedCell.colKey === colKey) {
+                        td.classList.add('cell-selected');
+                    }
+
+                    tr.appendChild(td);
+                });
+
+                fragment.appendChild(tr);
+            });
+
+            tbody.appendChild(fragment);
+            calculateStatistics();
+        }
+
+        // CELL SELECTION HANDLER
+        function selectCell(rowIndex, colKey, value, tdElement) {
+            document.querySelectorAll('.sheet-grid td.cell-selected').forEach(el => el.classList.remove('cell-selected'));
+            if (tdElement) tdElement.classList.add('cell-selected');
+
+            selectedCell = { row: rowIndex, colKey: colKey };
+            document.getElementById('cell-address').textContent = `${colKey}${rowIndex}`;
+            document.getElementById('cell-value-display').textContent = value || '(empty cell)';
+        }
+
+        // SEARCH FUNCTIONALITY
+        function handleSearch() {
+            const query = document.getElementById('search-input').value.toLowerCase().trim();
+            if (!query) {
+                filteredData = [...extractedData];
+            } else {
+                filteredData = extractedData.filter(row => {
+                    return (row.A && row.A.toLowerCase().includes(query)) ||
+                           (row.Y && row.Y.toLowerCase().includes(query)) ||
+                           (row.L && row.L.toLowerCase().includes(query)) ||
+                           (row.C && row.C.toLowerCase().includes(query)) ||
+                           (row.R && row.R.toLowerCase().includes(query));
+                });
+            }
+            currentPage = 1;
+            renderSheetData();
+        }
+
+        // SORTING FUNCTIONALITY
+        function sortTable(colKey) {
+            if (currentSort.column === colKey) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = colKey;
+                currentSort.direction = 'asc';
+            }
+
+            // Reset icons
+            ['A', 'Y', 'L', 'C', 'R'].forEach(k => {
+                const icon = document.getElementById(`sort-icon-${k}`);
+                if (k === colKey) {
+                    icon.className = currentSort.direction === 'asc' ? 'fa-solid fa-sort-up text-gsheet-green ml-1' : 'fa-solid fa-sort-down text-gsheet-green ml-1';
+                } else {
+                    icon.className = 'fa-solid fa-sort text-gray-400 ml-1';
+                }
+            });
+
+            filteredData.sort((a, b) => {
+                const valA = a[colKey] || '';
+                const valB = b[colKey] || '';
+
+                const numA = parseFloat(valA);
+                const numB = parseFloat(valB);
+
+                let cmp = 0;
+                if (!isNaN(numA) && !isNaN(numB)) {
+                    cmp = numA - numB;
+                } else {
+                    cmp = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' });
+                }
+
+                return currentSort.direction === 'asc' ? cmp : -cmp;
+            });
+
+            currentPage = 1;
+            renderSheetData();
+        }
+
+        // CALCULATE SUMMARY STATS FOR COLUMN R & NUMERIC DATA
+        function calculateStatistics() {
+            let count = filteredData.length;
+            let sum = 0;
+            let numericCount = 0;
+
+            filteredData.forEach(row => {
+                const val = parseFloat(row.R || row.C || row.A);
+                if (!isNaN(val)) {
+                    sum += val;
+                    numericCount++;
+                }
+            });
+
+            document.getElementById('stat-count').textContent = count.toLocaleString();
+            document.getElementById('stat-sum').textContent = numericCount > 0 ? sum.toLocaleString(undefined, { maximumFractionDigits: 2 }) : 'N/A';
+            document.getElementById('stat-avg').textContent = numericCount > 0 ? (sum / numericCount).toLocaleString(undefined, { maximumFractionDigits: 2 }) : 'N/A';
+        }
+
+        // PAGINATION & PAGE SIZE
+        function changePageSize(val) {
+            pageSize = parseInt(val);
+            currentPage = 1;
+            renderSheetData();
+        }
+
+        function navigatePage(direction) {
+            currentPage += direction;
+            renderSheetData();
+        }
+
+        // COPY TO CLIPBOARD FUNCTION (Supports TSV format for pasting into Excel / Sheets)
+        async function copyToClipboard(mode, specificCol = null) {
+            if (!filteredData || filteredData.length === 0) {
+                showToast('No data available to copy!', true);
+                return;
+            }
+
+            let textContent = '';
+            let msg = '';
+
+            if (mode === 'col' && specificCol) {
+                // Copy single column values
+                const header = specificCol;
+                const rows = filteredData.map(r => r[specificCol]);
+                textContent = [header, ...rows].join('\n');
+                msg = `Copied Column ${specificCol} (${filteredData.length.toLocaleString()} rows) to clipboard!`;
+            } else {
+                // Copy all 5 columns (A, Y, L, C, R) formatted with Tabs for Excel/Sheets pasting
+                const headers = ['A', 'Y', 'L', 'C', 'R'].join('\t');
+                const rows = filteredData.map(r => [r.A, r.Y, r.L, r.C, r.R].join('\t')).join('\n');
+                textContent = `${headers}\n${rows}`;
+                msg = `Copied ${filteredData.length.toLocaleString()} rows (A, Y, L, C, R) to clipboard!`;
+            }
+
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(textContent);
+                } else {
+                    // Fallback for non-HTTPS or older browsers
+                    const textArea = document.createElement('textarea');
+                    textArea.value = textContent;
+                    textArea.style.position = 'fixed';
+                    textArea.style.opacity = '0';
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                }
+                showToast(msg);
+            } catch (err) {
+                console.error('Clipboard copy error:', err);
+                showToast('Failed to copy. Please try again.', true);
+            }
+        }
+
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-message');
+            
+            toastMsg.textContent = message;
+            if (isError) {
+                toast.className = 'fixed bottom-12 left-1/2 -translate-x-1/2 z-50 bg-red-900 text-white text-xs px-4 py-2.5 rounded-full shadow-2xl flex items-center space-x-2 border border-red-700 transition-all duration-300';
+            } else {
+                toast.className = 'fixed bottom-12 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white text-xs px-4 py-2.5 rounded-full shadow-2xl flex items-center space-x-2 border border-gray-700 transition-all duration-300';
+            }
+
+            toast.classList.remove('hidden');
+
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+
+        // EXPORT DATA (CSV OR EXCEL)
+        function exportData(format) {
+            if (!extractedData || extractedData.length === 0) {
+                alert('No data available to export.');
+                return;
+            }
+
+            const exportHeaders = ['A', 'Y', 'L', 'C', 'R'];
+            const rows = filteredData.map(row => [row.A, row.Y, row.L, row.C, row.R]);
+
+            if (format === 'csv') {
+                const csvData = [exportHeaders, ...rows];
+                const csvString = Papa.unparse(csvData);
+                downloadBlob(csvString, 'GoogleSheet_Populated_A_Y_L_C_R.csv', 'text/csv;charset=utf-8;');
+            } else if (format === 'xlsx') {
+                const worksheetData = [exportHeaders, ...rows];
+                const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Extracted Data");
+                XLSX.writeFile(workbook, 'GoogleSheet_Populated_A_Y_L_C_R.xlsx');
+            }
+        }
+
+        function downloadBlob(content, filename, contentType) {
+            const blob = new Blob([content], { type: contentType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // COLUMN MAPPING MODAL CONTROLS
+        function openMappingModal() {
+            if (rawHeaders.length === 0) {
+                alert('Please upload a CSV or ZIP file first.');
+                return;
+            }
+
+            const container = document.getElementById('mapping-selectors-container');
+            container.innerHTML = '';
+
+            ['A', 'Y', 'L', 'C', 'R'].forEach(colKey => {
+                const currentIdx = columnMapping[colKey].sourceIndex;
+                
+                let optionsHtml = rawHeaders.map((h, i) => {
+                    const selected = i === currentIdx ? 'selected' : '';
+                    return `<option value="${i}" ${selected}>Col #${i + 1}: ${h || '(Unnamed Header)'}</option>`;
+                }).join('');
+
+                const div = document.createElement('div');
+                div.className = 'flex items-center justify-between bg-gray-50 p-2.5 rounded-lg border border-gray-200';
+                div.innerHTML = `
+                    <div class="flex items-center space-x-2">
+                        <span class="font-bold text-sm w-24 text-gray-700">Target Col ${colKey}:</span>
+                    </div>
+                    <select id="map-select-${colKey}" class="bg-white border border-gray-300 rounded px-3 py-1.5 text-xs text-gray-800 focus:outline-none focus:border-gsheet-green flex-1 ml-2">
+                        ${optionsHtml}
+                    </select>
+                `;
+                container.appendChild(div);
+            });
+
+            document.getElementById('mapping-modal').classList.remove('hidden');
+        }
+
+        function closeMappingModal() {
+            document.getElementById('mapping-modal').classList.add('hidden');
+        }
+
+        function applyMappingChanges() {
+            ['A', 'Y', 'L', 'C', 'R'].forEach(colKey => {
+                const sel = document.getElementById(`map-select-${colKey}`);
+                if (sel) {
+                    const newIdx = parseInt(sel.value);
+                    columnMapping[colKey].sourceIndex = newIdx;
+                    columnMapping[colKey].headerName = rawHeaders[newIdx] || `Col #${newIdx + 1}`;
+                }
+            });
+
+            updateMappingSummaryUI();
+            extractMappedData();
+            renderSheetData();
+            closeMappingModal();
+        }
+
+        function updateMappingSummaryUI() {
+            const container = document.getElementById('mapping-summary-tags');
+            if (!container) return;
+
+            const tags = ['A', 'Y', 'L', 'C', 'R'].map(k => {
+                const hName = columnMapping[k].headerName;
+                return `<span class="bg-white text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded font-mono font-medium">Col ${k} &rarr; ${hName || 'Col #' + (columnMapping[k].sourceIndex + 1)}</span>`;
+            }).join('');
+
+            container.innerHTML = tags;
+        }
+
+        // GENERATE SAMPLE CSV FOR IMMEDIATE DEMO TESTING
+        function generateSampleCSV() {
+            showLoader('Generating sample dataset...');
+            
+            setTimeout(() => {
+                // Generate 50 realistic ecommerce order rows with 30 columns to test Col A (1), Col Y (25), Col L (12), Col C (3), Col R (18)
+                rawHeaders = Array.from({ length: 30 }, (_, i) => {
+                    if (i === 0) return 'A_Order_ID';
+                    if (i === 2) return 'C_Customer_Name';
+                    if (i === 11) return 'L_Shipping_City';
+                    if (i === 17) return 'R_Total_Amount';
+                    if (i === 24) return 'Y_Order_Status';
+                    return `Header_Col_${i + 1}`;
+                });
+
+                const statuses = ['DELIVERED', 'SHIPPED', 'CANCELLED', 'RETURNED', 'PENDING'];
+                const cities = ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Miami', 'Seattle', 'Dallas'];
+                const names = ['John Smith', 'Sarah Connor', 'Michael Scott', 'Emma Watson', 'Bruce Wayne', 'Clark Kent'];
+
+                rawRows = [];
+                for (let i = 1; i <= 150; i++) {
+                    let row = new Array(30).fill('');
+                    row[0] = `ORD-${1000 + i}`;
+                    row[2] = names[i % names.length];
+                    row[11] = cities[i % cities.length];
+                    row[17] = (Math.random() * 200 + 15).toFixed(2);
+                    row[24] = statuses[i % statuses.length];
+
+                    // Fill remaining columns with dummy data
+                    for (let c = 0; c < 30; c++) {
+                        if (!row[c]) row[c] = `Data_${i}_${c + 1}`;
+                    }
+                    rawRows.push(row);
+                }
+
+                autoDetectColumnMapping();
+                extractMappedData();
+
+                document.getElementById('file-name-display').textContent = 'Sample_Orders_30Cols.csv';
+                document.getElementById('file-status-badge').classList.remove('hidden');
+                document.getElementById('download-btn-top').disabled = false;
+                document.getElementById('copy-btn-top').disabled = false;
+
+                document.getElementById('upload-container').classList.add('hidden');
+                document.getElementById('grid-container').classList.remove('hidden');
+
+                hideLoader();
+                renderSheetData();
+            }, 300);
+        }
+
+        // LOADER UTILS
+        function showLoader(text) {
+            document.getElementById('loader-text').textContent = text || 'Processing...';
+            document.getElementById('loader').classList.remove('hidden');
+        }
+
+        function hideLoader() {
+            document.getElementById('loader').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
