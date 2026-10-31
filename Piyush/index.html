@@ -1,210 +1,135 @@
-
 <!doctype html>
-<html>
-    <head>
-        <meta name="viewport" content="width=device-width, user-scalable=yes" />
-        <link rel="stylesheet" type="text/css" href="css/css-bootstrap.min.css" />
-        <link rel="stylesheet" type="text/css" href="css/css-8th.css" />
-        <script type="text/javascript">
-            function replaceHide(id, newContent) {
-                if (newContent) {
-                    if (id == "div_name") {
-                        newContent = newContent.trim();
-                        var lastIndex = newContent.lastIndexOf(" ");
-                        var firstName = newContent.substring(0, lastIndex);
-                        var lastName = newContent.substring(lastIndex + 1);
-                        document.getElementById(id).innerHTML = firstName;
-                        document.getElementById("div_surname").innerHTML = lastName;
-                    } else {
-                        document.getElementById(id).innerHTML = newContent;
-                    }
-                } else {
-                    document.getElementById(id).parentNode.style.display = "none";
-                }
-            }
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#23483d">
+  <title>Piyush Asodariya | Biodata</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <svg class="icon-definitions" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="icon-person" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.25"/><path d="M5.5 20c.7-3.2 3.1-5 6.5-5s5.8 1.8 6.5 5"/></symbol>
+    <symbol id="icon-family" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3.5 19c.5-3.1 2.4-4.8 5.5-4.8s5 1.7 5.5 4.8M14.5 15c2.9-.5 5.1 1 6 3.5"/></symbol>
+    <symbol id="icon-tree" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2.2"/><circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="18" r="2.2"/><path d="M12 7.2v4.1M6 15.8v-4.5h12v4.5"/></symbol>
+    <symbol id="icon-education" viewBox="0 0 24 24"><path d="m3 9 9-5 9 5-9 5-9-5Z"/><path d="M7 11.2v5.1c2.9 2.1 7.1 2.1 10 0v-5.1M21 9v6"/></symbol>
+    <symbol id="icon-ruler" viewBox="0 0 24 24"><path d="M7 3h10v18H7zM7 7h4M7 11h3M7 15h4M7 19h3"/></symbol>
+    <symbol id="icon-scale" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9a4 4 0 0 1 8 0M12 9l2-2"/></symbol>
+    <symbol id="icon-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M7.5 3v4M16.5 3v4M3.5 10h17M8 14h2M14 14h2M8 17h2"/></symbol>
+    <symbol id="icon-drop" viewBox="0 0 24 24"><path d="M12 3s6.5 7.2 6.5 12a6.5 6.5 0 0 1-13 0C5.5 10.2 12 3 12 3Z"/><path d="M9 16a3 3 0 0 0 3 3"/></symbol>
+    <symbol id="icon-briefcase" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18M10 12v2h4v-2"/></symbol>
+    <symbol id="icon-phone" viewBox="0 0 24 24"><path d="M6.5 3.5h3l1.3 4-2 1.6a15 15 0 0 0 6.1 6.1l1.6-2 4 1.3v3c0 1.1-.9 2-2 2C10.8 19.5 4.5 13.2 4.5 5.5c0-1.1.9-2 2-2Z"/></symbol>
+    <symbol id="icon-sparkle" viewBox="0 0 24 24"><path d="m12 3 1.5 6.5L20 11l-6.5 1.5L12 19l-1.5-6.5L4 11l6.5-1.5L12 3ZM19 17l.6 2.4L22 20l-2.4.6L19 23l-.6-2.4L16 20l2.4-.6L19 17Z"/></symbol>
+    <symbol id="icon-pin" viewBox="0 0 24 24"><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z"/><circle cx="12" cy="10" r="2.2"/></symbol>
+  </svg>
+  <main class="biodata-sheet">
+    <aside class="profile-panel" aria-label="Personal details">
+      <figure class="portrait">
+        <img src="images/main_pic.jpg" alt="Portrait of Piyush Asodariya">
+      </figure>
 
-            function replaceHideParent(id, newContent) {
-                if (newContent) {
-                    document.getElementById(id).innerHTML = newContent;
-                } else {
-                    document.getElementById(id).parentNode.style.display = "none";
-                }
-            }
+      <section class="personal-section" aria-labelledby="personal-heading">
+        <h2 id="personal-heading" class="section-heading"><svg class="section-icon" aria-hidden="true"><use href="#icon-person"/></svg><span>Personal Details</span></h2>
+        <dl class="detail-list">
+          <div class="detail-item">
+            <dt><svg class="field-icon" aria-hidden="true"><use href="#icon-ruler"/></svg>Height</dt>
+            <dd>5'7&quot;</dd>
+          </div>
+          <div class="detail-item">
+            <dt><svg class="field-icon" aria-hidden="true"><use href="#icon-scale"/></svg>Weight</dt>
+            <dd>55 kg</dd>
+          </div>
+          <div class="detail-item">
+            <dt><svg class="field-icon" aria-hidden="true"><use href="#icon-calendar"/></svg>Date of Birth</dt>
+            <dd>08-01-1999</dd>
+          </div>
+          <div class="detail-item">
+            <dt><svg class="field-icon" aria-hidden="true"><use href="#icon-drop"/></svg>Blood Group</dt>
+            <dd>B+</dd>
+          </div>
+          <div class="detail-item">
+            <dt><svg class="field-icon" aria-hidden="true"><use href="#icon-briefcase"/></svg>Occupation</dt>
+            <dd>Chemical Engineer</dd>
+          </div>
+          <div class="detail-item">
+            <dt><svg class="field-icon" aria-hidden="true"><use href="#icon-phone"/></svg>Contact</dt>
+            <dd><a href="tel:+918460730242">+91 8460 730 242</a><br><a href="tel:+4917634519683">+49 1763 4519 683</a></dd>
+          </div>
+          <div class="detail-item">
+            <dt><svg class="field-icon" aria-hidden="true"><use href="#icon-sparkle"/></svg>Hobbies</dt>
+            <dd>Travelling, reading, and food</dd>
+          </div>
+          <div class="detail-item">
+            <dt><svg class="field-icon" aria-hidden="true"><use href="#icon-pin"/></svg>Address</dt>
+            <dd><address>159 - Chamunda Nagar Society,<br>Near Kuber Nagar, Simada Gam,<br>Surat - 395006</address></dd>
+          </div>
+        </dl>
+      </section>
+    </aside>
 
-            function replaceImg(id, newContent) {
-                if (newContent) {
-                    document.getElementById(id).src = newContent;
-                } else {
-                    document.getElementById(id).parentNode.style.display = "none";
-                }
-            }
+    <div class="main-panel">
+      <header class="intro">
+        <p class="eyebrow">Biodata</p>
+        <h1>Piyush Asodariya</h1>
+        <p class="profession"><svg class="field-icon" aria-hidden="true"><use href="#icon-briefcase"/></svg><span>Chemical Engineer</span></p>
+      </header>
 
-            function hide(id) {
-                document.getElementById(id).style.display = "none";
-            }
-        </script>
-    </head>
+      <!-- <section class="about-section" aria-labelledby="about-heading"> -->
+        <!-- <h2 id="about-heading" class="section-heading"><svg class="section-icon" aria-hidden="true"><use href="#icon-education"/></svg><span>About Me</span></h2> -->
+        <!-- <div class="education-note"> -->
+          <!-- <svg class="note-icon" aria-hidden="true"><use href="#icon-sparkle"/></svg> -->
+          <!-- <p>Completed a Master's degree in Chemical Engineering in Germany in 2026.</p> -->
+        <!-- </div> -->
+      <!-- </section> -->
 
-    <body>
-        <div class="container" style="padding: 10px">
-            <div class="px-4 py-2 border" style="border-color: #dee2e6">
-                <div class="row">
-                    <div class="col-5 px-0 pb-3" style="background-color: #ffd0aa">
-                        <div class="img">
-                            <img id="iv_profile" class="" width="100%" src="images/main_pic.png" />
-                        </div>
+      <section class="content-section" aria-labelledby="family-heading">
+        <h2 id="family-heading" class="section-heading"><svg class="section-icon" aria-hidden="true"><use href="#icon-family"/></svg><span>Family Background</span></h2>
+        <dl class="family-grid">
+          <div class="family-item family-item-wide">
+            <dt>Father</dt>
+            <dd>Mansukhbhai Karshanbhai Asodariya</dd>
+          </div>
+          <div class="family-item family-item-wide">
+            <dt>Father's Occupation</dt>
+            <dd>Construction</dd>
+          </div>
+          <div class="family-item family-item-wide">
+            <dt>Mother</dt>
+            <dd>Rekhaben Mansukhbhai Asodariya</dd>
+          </div>
+          <div class="family-item">
+            <dt>Family Contact</dt>
+            <dd><a href="tel:+919824987342">+91 98249 87342</a></dd>
+          </div>
+          <div class="family-item family-item-wide">
+            <dt>Native Place</dt>
+            <dd>Sudavad (Taluka: Bagsara, District: Amreli)</dd>
+          </div>
+          <div class="family-item family-item-wide">
+            <dt>Elder Brother</dt>
+            <dd>Mayur (~ Software Engineer)</dd>
+          </div>
+          <div class="family-item family-item-wide">
+            <dt>Elder Sister</dt>
+            <dd>Nayana Rajesh Shiroya (~ B.Sc.)</dd>
+          </div>
+        </dl>
+      </section>
 
-                        <div class="left_Sub text-center">
-                            <div>
-                                <div id="div_personal_details" class="heading_main mt-4">-:: Personal Details ::-</div>
-                            </div>
-
-                            <div>
-                                <div class="heading">Height:</div>
-                                <div id="div_height" class="details">5'8"</div>
-                            </div>
-
-                            <div>
-                                <div class="heading mt-3">Weight:</div>
-                                <div id="div_weight" class="details">55 kg</div>
-                            </div>
-
-                            <div>
-                                <div class="heading mt-3">Date of Birth:</div>
-                                <div id="div_dob" class="post ml-1">08-01-1999</div>
-                            </div>
-
-                            <div>
-                                <div class="heading mt-3">Blood Group:</div>
-                                <div id="div_blood" class="details">B+</div>
-                            </div>
-
-                            <div>
-                                <div class="heading mt-3">Occupation:</div>
-                                <div id="div_occupation" class="details">Chemical Engineer</div>
-                            </div>
-
-                            <div>
-                                <div class="heading mt-3">Contact:</div>
-                                <div id="div_contact" class="details">
-                                    +91 8460 730 242
-                                    <br />
-                                    +49 1763 4519 683
-                                </div>
-                            </div>
-
-                            <div>
-                                <div class="heading mt-3">Hobbies:</div>
-                                <div id="div_hobbies" class="details">Travelling, Reading, and Food</div>
-                            </div>
-
-                            <div>
-                                <div class="heading mt-3">Address:</div>
-                                <div id="div_address" class="details">
-                                    159 - Chamunda Nagar Society,<br />
-                                    Near Kuber Nagar, Simada Gam,<br />
-                                    Surat - 395006
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-7 p-0">
-                        <div class="p-5" style="background-color: #d7d7d9">
-                            <div id="div_name" class="name mb-0 h1" style="font-weight: 600">Piyush</div>
-                            <div id="div_surname" class="name" style="font-weight: 600">Asodariya</div>
-
-                            <div class="row ml-0 mt-1 mr-0">
-                                <div class="row pl-2 ml-0 mt-2 text-white w-100" style="background-color: #000">
-                                    <div>
-                                        <div
-                                            id="div_education"
-                                            class="details h6 mt-2"
-                                            style="letter-spacing: 2px; font-weight: 300; font-family: raleway"
-                                        >
-                                            Chemical Engineer
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <div class="heading_main mt-3 mb-0">About Me:</div>
-                                    <div id="div_other_details" class="details">
-                                        Completed a Master's Degree in Chemical Engineering in 2026<br />
-                                        <b>(Germany)</b>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="right_Sub pl-5">
-                            <div id="div_family_bg" class="heading_main mt-4">Family Background :-</div>
-
-                            <div>
-                                <div class="heading mt-2">Father's Name:</div>
-                                <div id="div_father_name" class="details">Mansukhbhai Karshanbhai Asodariya</div>
-                            </div>
-
-                            <div>
-                                <div class="heading mt-2">Occupation:</div>
-                                <div class="details">Construction Business</div>
-                            </div>
-
-                            <div>
-                                <div class="heading mt-3">Mother's Name:</div>
-                                <div id="div_mother_name" class="details">Rekhaben Mansukhbhai Asodariya</div>
-                            </div>
-
-                            <div>
-                                <div class="heading mt-3">Contact Number:</div>
-                                <div id="div_family_contact" class="details">+91 98249 87342</div>
-                            </div>
-
-                            <div>
-                                <div class="heading mt-3">Native Place:</div>
-                                <div id="div_native_place" class="details">
-                                    Sudavad (Taluka: Bagsara, District: Amreli)
-                                </div>
-                            </div>
-
-                            <div>
-                                <div class="heading mt-3">Elder Brother:</div>
-                                <div id="div_elder_sister" class="details">Mayur (~ Software Engineer)</div>
-                            </div>
-
-                            <div>
-                                <div class="heading mt-3">Elder Sister:</div>
-                                <div id="div_younger_sister" class="details">Nayana Rajesh Shiroya (~ B.Sc.)</div>
-                            </div>
-
-                            <div id="div_maternal_details" class="heading_main mt-4">Maternal Details :-</div>
-
-                            <div>
-                                <div class="heading mt-2">Maternal Uncle's Name:</div>
-                                <div id="div_m_name" class="details">Gordhanbhai Kadvabhai Lungariya</div>
-                            </div>
-
-                            <div>
-                                <div class="heading mt-3">Native Place:</div>
-                                <div id="div_m_place" class="details">
-                                    Nagadhra (Taluka: Dhari, District: Amreli)
-                                </div>
-                            </div>
-							
-							<div class="text-center mt-3">
-							<br>
-								<div class="heading_main" style="color: #8b633b; font-size: 18px;">
-									With Best Wishes
-								</div>
-								<!-- <div class="details mt-1" style="font-style: italic; color: #666;"> -->
-											<!-- With Best Wishes -->
-								<!-- </div> -->
-							</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-		
-    </body>
+      <section class="content-section maternal-section" aria-labelledby="maternal-heading">
+        <h2 id="maternal-heading" class="section-heading"><svg class="section-icon" aria-hidden="true"><use href="#icon-tree"/></svg><span>Maternal Details</span></h2>
+        <dl class="family-grid">
+          <div class="family-item family-item-wide">
+            <dt>Maternal Uncle</dt>
+            <dd>Gordhanbhai Kadvabhai Lungariya</dd>
+          </div>
+          <div class="family-item family-item-wide">
+            <dt>Native Place</dt>
+            <dd>Nagadhra (Taluka: Dhari, District: Amreli)</dd>
+          </div>
+        </dl>
+      </section>
+    </div>
+  </main>
+</body>
 </html>
