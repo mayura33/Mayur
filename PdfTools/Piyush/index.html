@@ -1,0 +1,210 @@
+
+<!doctype html>
+<html>
+    <head>
+        <meta name="viewport" content="width=device-width, user-scalable=yes" />
+        <link rel="stylesheet" type="text/css" href="css/css-bootstrap.min.css" />
+        <link rel="stylesheet" type="text/css" href="css/css-8th.css" />
+        <script type="text/javascript">
+            function replaceHide(id, newContent) {
+                if (newContent) {
+                    if (id == "div_name") {
+                        newContent = newContent.trim();
+                        var lastIndex = newContent.lastIndexOf(" ");
+                        var firstName = newContent.substring(0, lastIndex);
+                        var lastName = newContent.substring(lastIndex + 1);
+                        document.getElementById(id).innerHTML = firstName;
+                        document.getElementById("div_surname").innerHTML = lastName;
+                    } else {
+                        document.getElementById(id).innerHTML = newContent;
+                    }
+                } else {
+                    document.getElementById(id).parentNode.style.display = "none";
+                }
+            }
+
+            function replaceHideParent(id, newContent) {
+                if (newContent) {
+                    document.getElementById(id).innerHTML = newContent;
+                } else {
+                    document.getElementById(id).parentNode.style.display = "none";
+                }
+            }
+
+            function replaceImg(id, newContent) {
+                if (newContent) {
+                    document.getElementById(id).src = newContent;
+                } else {
+                    document.getElementById(id).parentNode.style.display = "none";
+                }
+            }
+
+            function hide(id) {
+                document.getElementById(id).style.display = "none";
+            }
+        </script>
+    </head>
+
+    <body>
+        <div class="container" style="padding: 10px">
+            <div class="px-4 py-2 border" style="border-color: #dee2e6">
+                <div class="row">
+                    <div class="col-5 px-0 pb-3" style="background-color: #ffd0aa">
+                        <div class="img">
+                            <img id="iv_profile" class="" width="100%" src="images/main_pic.png" />
+                        </div>
+
+                        <div class="left_Sub text-center">
+                            <div>
+                                <div id="div_personal_details" class="heading_main mt-4">-:: Personal Details ::-</div>
+                            </div>
+
+                            <div>
+                                <div class="heading">Height:</div>
+                                <div id="div_height" class="details">5'8"</div>
+                            </div>
+
+                            <div>
+                                <div class="heading mt-3">Weight:</div>
+                                <div id="div_weight" class="details">55 kg</div>
+                            </div>
+
+                            <div>
+                                <div class="heading mt-3">Date of Birth:</div>
+                                <div id="div_dob" class="post ml-1">08-01-1999</div>
+                            </div>
+
+                            <div>
+                                <div class="heading mt-3">Blood Group:</div>
+                                <div id="div_blood" class="details">B+</div>
+                            </div>
+
+                            <div>
+                                <div class="heading mt-3">Occupation:</div>
+                                <div id="div_occupation" class="details">Chemical Engineer</div>
+                            </div>
+
+                            <div>
+                                <div class="heading mt-3">Contact:</div>
+                                <div id="div_contact" class="details">
+                                    +91 8460 730 242
+                                    <br />
+                                    +49 1763 4519 683
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="heading mt-3">Hobbies:</div>
+                                <div id="div_hobbies" class="details">Travelling, Reading, and Food</div>
+                            </div>
+
+                            <div>
+                                <div class="heading mt-3">Address:</div>
+                                <div id="div_address" class="details">
+                                    159 - Chamunda Nagar Society,<br />
+                                    Near Kuber Nagar, Simada Gam,<br />
+                                    Surat - 395006
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-7 p-0">
+                        <div class="p-5" style="background-color: #d7d7d9">
+                            <div id="div_name" class="name mb-0 h1" style="font-weight: 600">Piyush</div>
+                            <div id="div_surname" class="name" style="font-weight: 600">Asodariya</div>
+
+                            <div class="row ml-0 mt-1 mr-0">
+                                <div class="row pl-2 ml-0 mt-2 text-white w-100" style="background-color: #000">
+                                    <div>
+                                        <div
+                                            id="div_education"
+                                            class="details h6 mt-2"
+                                            style="letter-spacing: 2px; font-weight: 300; font-family: raleway"
+                                        >
+                                            Chemical Engineer
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div class="heading_main mt-3 mb-0">About Me:</div>
+                                    <div id="div_other_details" class="details">
+                                        Completed a Master's Degree in Chemical Engineering in 2026<br />
+                                        <b>(Germany)</b>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="right_Sub pl-5">
+                            <div id="div_family_bg" class="heading_main mt-4">Family Background :-</div>
+
+                            <div>
+                                <div class="heading mt-2">Father's Name:</div>
+                                <div id="div_father_name" class="details">Mansukhbhai Karshanbhai Asodariya</div>
+                            </div>
+
+                            <div>
+                                <div class="heading mt-2">Occupation:</div>
+                                <div class="details">Construction Business</div>
+                            </div>
+
+                            <div>
+                                <div class="heading mt-3">Mother's Name:</div>
+                                <div id="div_mother_name" class="details">Rekhaben Mansukhbhai Asodariya</div>
+                            </div>
+
+                            <div>
+                                <div class="heading mt-3">Contact Number:</div>
+                                <div id="div_family_contact" class="details">+91 98249 87342</div>
+                            </div>
+
+                            <div>
+                                <div class="heading mt-3">Native Place:</div>
+                                <div id="div_native_place" class="details">
+                                    Sudavad (Taluka: Bagsara, District: Amreli)
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="heading mt-3">Elder Brother:</div>
+                                <div id="div_elder_sister" class="details">Mayur (~ Software Engineer)</div>
+                            </div>
+
+                            <div>
+                                <div class="heading mt-3">Elder Sister:</div>
+                                <div id="div_younger_sister" class="details">Nayana Rajesh Shiroya (~ B.Sc.)</div>
+                            </div>
+
+                            <div id="div_maternal_details" class="heading_main mt-4">Maternal Details :-</div>
+
+                            <div>
+                                <div class="heading mt-2">Maternal Uncle's Name:</div>
+                                <div id="div_m_name" class="details">Gordhanbhai Kadvabhai Lungariya</div>
+                            </div>
+
+                            <div>
+                                <div class="heading mt-3">Native Place:</div>
+                                <div id="div_m_place" class="details">
+                                    Nagadhra (Taluka: Dhari, District: Amreli)
+                                </div>
+                            </div>
+							
+							<div class="text-center mt-3">
+							<br>
+								<div class="heading_main" style="color: #8b633b; font-size: 18px;">
+									With Best Wishes
+								</div>
+								<!-- <div class="details mt-1" style="font-style: italic; color: #666;"> -->
+											<!-- With Best Wishes -->
+								<!-- </div> -->
+							</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+		
+    </body>
+</html>
